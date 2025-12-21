@@ -1,0 +1,28 @@
+142 WARNING: Assuming this is not an Anaconda environment or an additional venv/pipenv/... environment manager is being used on top, because the conda-meta folder C:\Users\R00171\OneDrive - Uniper SE\Desktop\QA_AI_DOCUMENT\venv\conda-meta does not exist.
+180 INFO: PyInstaller: 6.17.0, contrib hooks: 2025.10
+180 INFO: Python: 3.12.7 (conda)
+216 INFO: Platform: Windows-11-10.0.22621-SP0
+216 INFO: Python environment: C:\Users\R00171\OneDrive - Uniper SE\Desktop\QA_AI_DOCUMENT\venv
+217 INFO: Removing temporary files and cleaning cache in C:\Users\R00171\AppData\Local\pyinstaller
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\R00171\OneDrive - Uniper SE\Desktop\QA_AI_DOCUMENT\venv\Scripts\pyinstaller.exe\__main__.py", line 7, in <module>
+  File "C:\Users\R00171\OneDrive - Uniper SE\Desktop\QA_AI_DOCUMENT\venv\Lib\site-packages\PyInstaller\__main__.py", line 231, in _console_script_run
+    run()
+  File "C:\Users\R00171\OneDrive - Uniper SE\Desktop\QA_AI_DOCUMENT\venv\Lib\site-packages\PyInstaller\__main__.py", line 215, in run
+    run_build(pyi_config, spec_file, **vars(args))
+  File "C:\Users\R00171\OneDrive - Uniper SE\Desktop\QA_AI_DOCUMENT\venv\Lib\site-packages\PyInstaller\__main__.py", line 70, in run_build
+    PyInstaller.building.build_main.main(pyi_config, spec_file, **kwargs)
+  File "C:\Users\R00171\OneDrive - Uniper SE\Desktop\QA_AI_DOCUMENT\venv\Lib\site-packages\PyInstaller\building\build_main.py", line 1272, in main
+    build(specfile, distpath, workpath, clean_build)
+  File "C:\Users\R00171\OneDrive - Uniper SE\Desktop\QA_AI_DOCUMENT\venv\Lib\site-packages\PyInstaller\building\build_main.py", line 1165, in build
+    shutil.rmtree(f)
+  File "C:\Users\R00171\AppData\Local\anaconda3\Lib\shutil.py", line 781, in rmtree
+    return _rmtree_unsafe(path, onexc)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\R00171\AppData\Local\anaconda3\Lib\shutil.py", line 639, in _rmtree_unsafe
+    onexc(os.rmdir, path, err)
+  File "C:\Users\R00171\AppData\Local\anaconda3\Lib\shutil.py", line 637, in _rmtree_unsafe
+    os.rmdir(path)
+PermissionError: [WinError 5] Access is denied: 'C:\\Users\\R00171\\OneDrive - Uniper SE\\Desktop\\QA_AI_DOCUMENT\\build\\DocumentQA\\localpycs'

@@ -1,0 +1,80 @@
+================================================================================
+                    DOQURIX - LICENSE KEYS FOR DISTRIBUTION
+================================================================================
+
+These are valid license keys that can be sold to customers.
+Each key activates Doqurix on ONE machine permanently.
+
+IMPORTANT: Keep this file secure and do not distribute with the software!
+
+================================================================================
+                              AVAILABLE LICENSE KEYS
+================================================================================
+
+Key #01:  DQRX-7K9M-P2XN-4HTL
+Key #02:  DQRX-3FBW-8QYC-J6VR
+Key #03:  DQRX-9LDH-5MKS-2ATP
+Key #04:  DQRX-6NWT-R4GZ-8CVE
+Key #05:  DQRX-1YPJ-X7BF-Q3UM
+Key #06:  DQRX-4KCR-2HVL-9DWN
+Key #07:  DQRX-8MSG-6TYP-Z5JB
+Key #08:  DQRX-2QXA-K9FE-7LHC
+Key #09:  DQRX-5VBN-3DWT-R8YK
+Key #10:  DQRX-7ZJL-P4MQ-1SGF
+Key #11:  DQRX-9CTH-6XVR-4KBW
+Key #12:  DQRX-3PME-Y8NJ-2FAL
+Key #13:  DQRX-6WKS-1QDC-5TXH
+Key #14:  DQRX-4LBV-7GRZ-9MYN
+Key #15:  DQRX-8FXP-2KCJ-3WQT
+Key #16:  DQRX-1DHY-5SLM-6VBG
+Key #17:  DQRX-9NRA-4ZWK-8PFC
+Key #18:  DQRX-2TCM-X6HQ-7JLS
+Key #19:  DQRX-5GVE-9BYN-1KDW
+Key #20:  DQRX-7QJZ-3FPT-4XMH
+
+================================================================================
+                              KEY TRACKING TABLE
+================================================================================
+
+| Key # | License Key           | Status    | Customer        | Date Sold  |
+|-------|----------------------|-----------|-----------------|------------|
+|   01  | DQRX-7K9M-P2XN-4HTL  | Available |                 |            |
+|   02  | DQRX-3FBW-8QYC-J6VR  | Available |                 |            |
+|   03  | DQRX-9LDH-5MKS-2ATP  | Available |                 |            |
+|   04  | DQRX-6NWT-R4GZ-8CVE  | Available |                 |            |
+|   05  | DQRX-1YPJ-X7BF-Q3UM  | Available |                 |            |
+|   06  | DQRX-4KCR-2HVL-9DWN  | Available |                 |            |
+|   07  | DQRX-8MSG-6TYP-Z5JB  | Available |                 |            |
+|   08  | DQRX-2QXA-K9FE-7LHC  | Available |                 |            |
+|   09  | DQRX-5VBN-3DWT-R8YK  | Available |                 |            |
+|   10  | DQRX-7ZJL-P4MQ-1SGF  | Available |                 |            |
+|   11  | DQRX-9CTH-6XVR-4KBW  | Available |                 |            |
+|   12  | DQRX-3PME-Y8NJ-2FAL  | Available |                 |            |
+|   13  | DQRX-6WKS-1QDC-5TXH  | Available |                 |            |
+|   14  | DQRX-4LBV-7GRZ-9MYN  | Available |                 |            |
+|   15  | DQRX-8FXP-2KCJ-3WQT  | Available |                 |            |
+|   16  | DQRX-1DHY-5SLM-6VBG  | Available |                 |            |
+|   17  | DQRX-9NRA-4ZWK-8PFC  | Available |                 |            |
+|   18  | DQRX-2TCM-X6HQ-7JLS  | Available |                 |            |
+|   19  | DQRX-5GVE-9BYN-1KDW  | Available |                 |            |
+|   20  | DQRX-7QJZ-3FPT-4XMH  | Available |                 |            |
+
+================================================================================
+                                 NOTES
+================================================================================
+
+1. Trial Period: 30 days from first launch
+2. License is tied to the machine (cannot be transferred)
+3. Keys can only be used once per machine
+4. If customer changes computer, they need a new key
+
+To generate more keys, add them to the VALID_KEYS list in main.py
+Key format: DQRX-XXXX-XXXX-XXXX (where X is uppercase letter or number)
+
+================================================================================
+                         CONTACT INFORMATION
+================================================================================
+
+For license sales inquiries: sales@doqurix.com
+
+Generated: December 2025
