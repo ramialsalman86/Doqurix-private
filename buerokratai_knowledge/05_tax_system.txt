@@ -1,0 +1,203 @@
+TAX ID, TAX CLASS, AND INCOME TAX IN GERMANY
+=============================================
+Source: Bundeszentralamt für Steuern (BZSt), Finanzamt
+Last Updated: January 2026
+
+STEUER-IDENTIFIKATIONSNUMMER (TAX ID)
+-------------------------------------
+
+What is it?
+- 11-digit unique tax identification number
+- Assigned to every person registered in Germany
+- Permanent - never changes, even if you move
+- Format: XX XXX XXX XXX (e.g., 12 345 678 901)
+
+When do you get it?
+- Automatically sent after your first Anmeldung (address registration)
+- Arrives by mail within 2-4 weeks to your registered address
+- Children born in Germany get it automatically
+
+Why do you need it?
+- Required by employer (Arbeitgeber) to calculate tax
+- Required for opening bank accounts (since 2011)
+- Required for tax returns
+- Required for some government benefits
+
+Lost your Tax ID?
+- Request a new letter: www.bzst.de
+- Online form available
+- Takes about 4 weeks
+- Or call BZSt: +49 228 406-1240
+
+STEUERNUMMER (TAX NUMBER)
+-------------------------
+Different from Tax ID!
+- Assigned by local Finanzamt (tax office)
+- Format: XXX/XXX/XXXXX (varies by federal state)
+- Can change if you move to different Finanzamt area
+- Used on tax returns and business tax matters
+
+TAX CLASSES (STEUERKLASSEN)
+---------------------------
+
+Germany has 6 tax classes determining monthly withholding:
+
+TAX CLASS I
+- Who: Single, divorced, widowed
+- Who: Married but spouse lives abroad permanently
+- Monthly withholding: Standard rate
+
+TAX CLASS II
+- Who: Single parents with child(ren) in household
+- Benefit: Additional allowance (Entlastungsbetrag)
+- Monthly withholding: Lower than Class I
+- Must have child registered at same address
+- Must apply for it (not automatic)
+
+TAX CLASS III
+- Who: Married, one spouse earns significantly more
+- Combined with Class V for other spouse
+- Monthly withholding: Lowest (most money monthly)
+- Best when one spouse earns 60%+ of combined income
+
+TAX CLASS IV
+- Who: Married couples with similar income
+- Default class for married couples
+- Both spouses pay same rate
+- Option: IV with factor (faktor) for optimized withholding
+
+TAX CLASS V
+- Who: Spouse of person in Class III
+- Monthly withholding: Highest
+- Should earn less than spouse in Class III
+
+TAX CLASS VI
+- Who: For second or additional jobs
+- Monthly withholding: Highest (no allowances)
+- All additional employment uses this class
+
+MARRIED COUPLES - CHOOSING TAX CLASSES
+--------------------------------------
+Options for married couples:
+1. III / V: Best if one earns much more (60%+ of total)
+2. IV / IV: Best if both earn similar amounts
+3. IV / IV with factor: Optimized based on actual income ratio
+
+To change tax class:
+- Submit "Antrag auf Steuerklassenwechsel" to Finanzamt
+- Or use ELSTER online portal
+- Can change once per year (exceptions for major life events)
+- Marriage: Automatic change to IV/IV, can then request III/V
+
+INCOME TAX (EINKOMMENSTEUER)
+----------------------------
+
+Progressive tax rate (2024/2025):
+
+Income (€/year)    | Tax Rate
+-------------------|----------
+0 - 11,604         | 0% (tax-free allowance)
+11,605 - 17,005    | 14% - 24% (progressive)
+17,006 - 66,760    | 24% - 42% (progressive)
+66,761 - 277,825   | 42%
+Above 277,826      | 45% (Reichensteuer)
+
+Additional:
+- Solidarity surcharge (Solidaritätszuschlag): 5.5% of income tax
+  - Only applies if tax exceeds ~€18,000/year
+- Church tax (Kirchensteuer): 8-9% of income tax
+  - Only if registered with church (Catholic, Protestant)
+  - Can opt out (Kirchenaustritt)
+
+MONTHLY TAX CALCULATION
+-----------------------
+Your employer calculates monthly withholding (Lohnsteuer) based on:
+- Gross salary
+- Tax class
+- Tax ID (for electronic retrieval of data)
+- Church membership
+- Number of children (Kinderfreibetrag)
+
+Salary slip (Gehaltsabrechnung) shows:
+- Brutto (gross) salary
+- Lohnsteuer (income tax withheld)
+- Solidaritätszuschlag (solidarity surcharge)
+- Kirchensteuer (church tax, if applicable)
+- Sozialabgaben (social security contributions)
+- Netto (net) salary
+
+TAX RETURN (STEUERERKLÄRUNG)
+----------------------------
+
+Who MUST file:
+- Self-employed
+- Freelancers
+- Multiple employers in one year
+- Received unemployment benefits
+- Tax Class III/V combination
+- Income from abroad
+- Received certain capital gains
+
+Who SHOULD file (voluntary):
+- Employees (often get refund ~€1,000 on average)
+- Those with work-related expenses
+- Those who moved for work
+- Double household (doppelte Haushaltsführung)
+
+Deadline:
+- July 31 of following year (self-filing)
+- End of February two years later (if using Steuerberater)
+- Example: 2024 taxes due by July 31, 2025
+
+How to file:
+1. ELSTER (www.elster.de) - free government portal
+2. Tax software (WISO, Taxfix, SteuerGo)
+3. Steuerberater (tax advisor) - costs €100-500+
+
+COMMON TAX DEDUCTIONS
+---------------------
+Employment expenses (Werbungskosten):
+- Commuting (Pendlerpauschale): €0.30/km (first 20km), €0.38/km after
+- Work equipment (laptop, desk, etc.)
+- Professional development courses
+- Work clothes (if specialized)
+- Moving costs for work
+- Double household
+
+Special expenses (Sonderausgaben):
+- Church tax paid
+- Pension contributions
+- Health/nursing insurance contributions
+- Charitable donations
+- Education/training costs
+
+Extraordinary expenses (Außergewöhnliche Belastungen):
+- Medical expenses above threshold
+- Disability-related costs
+- Care costs for family members
+
+TAX FOR DIFFERENT SITUATIONS
+----------------------------
+
+New in Germany:
+- Full tax liability starts from first day of residence
+- Inform employer of Tax ID (employer can request it)
+- First year may allow split tax assessment
+
+Leaving Germany:
+- Remain tax liable for German income
+- May get partial year tax-free allowance
+- Final tax return for departure year
+- De-registration (Abmeldung) documents needed
+
+Working remotely for foreign company:
+- Complex rules apply
+- May create tax liability in Germany
+- Consult Steuerberater
+
+USEFUL CONTACTS
+---------------
+- BZSt (Federal Central Tax Office): www.bzst.de
+- ELSTER: www.elster.de
+- Local Finanzamt: Search by city
+- Tax ID request: www.bzst.de/SiteGlobals/Kontaktformulare/DE/Steuerliche_IDNr/Mitteilung/mitteilung_IdNr_node.html

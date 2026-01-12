@@ -1,0 +1,105 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# PyInstaller
+*.spec
+build/
+dist/
+*.manifest
+*.exe
+*.app
+
+# Installer Output
+installer_output/
+*.exe
+
+# Models (too large for Git - download separately)
+models/
+*.gguf
+*.bin
+
+# Data directories
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ChromaDB
+chroma/
+chroma_db/
+
+# Logs
+*.log
+*.txt.log
+build_log.txt
+full_log.txt
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# License Keys (IMPORTANT - never commit!)
+LICENSE_KEYS.txt
+LICENSE_KEYS.zip
+*.pem
+*.key
+license.dat
+trial.dat
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.old
+
+# Compiled files
+*.pyc
+*.pyo
+*.pyd
+
+# Android (if not needed)
+android/
+
+# Build artifacts
+*.ico
+
+# Output files
+*.pdf
+*.docx
+*.xlsx
+
+# Sensitive information
+.env
+.env.local
+config.ini
+secrets.json
+
+# Documentation artifacts (optional - uncomment if you don't want to track)
+# main_complete.txt
+# commands

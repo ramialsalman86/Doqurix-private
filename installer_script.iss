@@ -88,6 +88,7 @@ Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Name: "{userappdata}\{#MyAppName}"; Permissions: users-full
 Name: "{userappdata}\{#MyAppName}\data"; Permissions: users-full
 Name: "{userappdata}\{#MyAppName}\models"; Permissions: users-full
+; Note: tax_knowledge is bundled with the app, not in user directory
 
 [Icons]
 ; Start Menu Icons
@@ -114,7 +115,7 @@ Type: filesandordirs; Name: "{userappdata}\{#MyAppName}"
 
 [Messages]
 ; Custom messages
-WelcomeLabel2=This will install [name/ver] on your computer.%n%nThis application uses advanced AI technology to answer questions from your PDF documents.%n%nSystem Requirements:%n• Windows 10 or later (64-bit)%n• Minimum 8GB RAM%n• 5GB free disk space for AI models%n%nThe application will download AI models (~1GB) on first launch.
+WelcomeLabel2=This will install [name/ver] on your computer.%n%nThis application uses advanced AI technology to answer questions from your PDF documents.%n%n🌟 NEW: Built-in German Tax Agent with comprehensive knowledge base%n%nSystem Requirements:%n• Windows 10 or later (64-bit)%n• Minimum 8GB RAM%n• 5GB free disk space for AI models%n%nThe application will download AI models (~1GB) on first launch.%n%nIncluded: German tax knowledge base for instant tax queries!
 
 [Code]
 var

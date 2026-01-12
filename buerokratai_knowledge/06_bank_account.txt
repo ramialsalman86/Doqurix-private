@@ -1,0 +1,226 @@
+BANK ACCOUNT IN GERMANY (GIROKONTO)
+====================================
+Source: BaFin, German Banking Association
+Last Updated: January 2026
+
+WHY YOU NEED A GERMAN BANK ACCOUNT
+----------------------------------
+- Salary payments (most employers require it)
+- Rent payments (Überweisung/SEPA)
+- Utility bills (direct debit/Lastschrift)
+- Health insurance payments
+- Required for apartment rental applications
+- Some landlords refuse without German account
+
+LEGAL RIGHT TO BASIC ACCOUNT
+----------------------------
+Since 2016, everyone legally residing in EU has right to basic account
+(Basiskonto) under Payment Accounts Directive.
+- Banks CANNOT refuse you for nationality
+- Banks CANNOT refuse for lack of income
+- Must provide essential services
+
+TYPES OF BANK ACCOUNTS
+----------------------
+
+1. GIROKONTO (Current Account)
+   - Standard everyday account
+   - Salary deposits
+   - Direct debits (Lastschrift)
+   - Transfers (Überweisungen)
+   - Usually comes with debit card (Girocard)
+
+2. BASISKONTO (Basic Account)
+   - For those who can't get regular Girokonto
+   - Limited features but covers essentials
+   - Right guaranteed by law
+
+3. SPARKONTO (Savings Account)
+   - For saving money
+   - Higher interest (usually)
+   - Limited withdrawals
+
+4. TAGESGELDKONTO (Call Money Account)
+   - Savings with daily access
+   - Better interest than Girokonto
+   - No direct payment functions
+
+TYPES OF BANKS IN GERMANY
+-------------------------
+
+Traditional Banks:
+- Deutsche Bank - largest private bank
+- Commerzbank - major private bank
+- Sparkasse - public savings banks (local)
+- Volksbank/Raiffeisenbank - cooperative banks (local)
+
+Direct/Online Banks:
+- ING Germany - popular, good English
+- DKB (Deutsche Kreditbank) - good for traveling
+- Comdirect - part of Commerzbank
+- Consorsbank
+
+Neobanks/Fintech (app-based):
+- N26 - popular with expats, English interface
+- Tomorrow - sustainable banking
+- Vivid Money
+- Revolut (UK-based, limited German features)
+
+Comparison:
+                 | Traditional | Online     | Neobank
+-----------------|-------------|------------|----------
+Branch access    | ✓           | ✗          | ✗
+English support  | Limited     | Good       | Excellent
+Account opening  | In branch   | Video call | App only
+Monthly fees     | €0-15       | Often free | Often free
+ATM access       | Wide        | Varies     | Limited
+
+REQUIRED DOCUMENTS
+------------------
+For most banks:
+1. Valid passport or ID card
+2. Anmeldung (address registration) - USUALLY REQUIRED
+3. Tax ID (Steuer-ID) - some banks need it
+4. Visa/residence permit (non-EU citizens)
+5. Proof of employment or income (sometimes)
+
+Some banks accept:
+- Hotel booking (temporary address)
+- Employer letter
+- No Anmeldung (limited cases)
+
+BANKS THAT WORK WITHOUT ANMELDUNG
+---------------------------------
+For newcomers before address registration:
+- N26 - can open with passport only
+- Tomorrow - flexible requirements
+- Vivid - flexible requirements
+- Some accounts possible with temporary address
+
+Note: These accounts may have limitations initially
+
+ACCOUNT OPENING PROCESS
+-----------------------
+
+Traditional Bank (in branch):
+1. Book appointment
+2. Bring documents
+3. Sign application in person
+4. Receive card by mail (1-2 weeks)
+5. PIN sent separately
+
+Online Bank (video identification):
+1. Apply online
+2. Video call for identification (5-15 min)
+3. Or PostIdent at post office
+4. Account active within 1-3 days
+5. Card arrives by mail
+
+Neobank (app-based):
+1. Download app
+2. Register and upload documents
+3. Video identification in app
+4. Account active within hours to days
+5. Card ordered through app
+
+ACCOUNT FEES
+------------
+Common fees to watch:
+- Monthly account fee (Kontoführungsgebühr): €0-15/month
+- Card fee (Kartengebühr): €0-30/year for Girocard
+- Credit card fee: €0-100/year
+- ATM withdrawals: Free at own network, €2-5 elsewhere
+- International transfers: €5-50 depending on method
+
+Free accounts available at:
+- DKB (free with salary deposit)
+- ING (free with €700/month deposit)
+- N26 (basic account)
+- Comdirect
+
+GIROCARD VS. CREDIT CARD
+------------------------
+Girocard (EC-Karte):
+- Debit card for German payment system
+- Money deducted immediately
+- Works at most German shops
+- ATM withdrawals at bank's network
+- NOT Visa/Mastercard
+
+Credit Card:
+- Visa or Mastercard
+- Works internationally
+- Monthly billing
+- Often extra fee in Germany
+- Not always accepted at German shops!
+
+Recommendation: Have both!
+
+SCHUFA - GERMAN CREDIT SCORE
+----------------------------
+What is Schufa?
+- Credit reporting agency
+- Tracks credit history in Germany
+- Score from 0-100% (higher is better)
+- Banks check Schufa when opening account
+
+For newcomers:
+- No Schufa history initially
+- Some banks reject without Schufa
+- N26, Tomorrow more flexible
+- Build history: Get phone contract, pay on time
+
+Check your Schufa:
+- Free annual report: www.meineschufa.de (Datenkopie)
+- Paid detailed report available
+
+IMPORTANT BANKING TERMS
+-----------------------
+- IBAN: International Bank Account Number (DE + 20 digits)
+- BIC/SWIFT: Bank identification for international transfers
+- Überweisung: Bank transfer
+- Lastschrift: Direct debit (automatic withdrawal)
+- Dauerauftrag: Standing order (regular transfers)
+- Kontoauszug: Bank statement
+- Girokonto: Current account
+- PIN: Personal identification number
+- TAN: Transaction authentication number
+
+BLOCKED ACCOUNT (SPERRKONTO)
+----------------------------
+For visa applications:
+
+What is it?
+- Special savings account with limited withdrawals
+- Required for student visas and some other visas
+- Proves you can support yourself in Germany
+
+Requirements 2024/2025:
+- Student visa: €11,208/year (€934/month)
+- Amount blocked, released monthly
+
+Providers:
+- Deutsche Bank
+- Fintiba (digital, popular)
+- Expatrio (digital, popular)
+- Coracle
+
+Timeline:
+- Fintiba/Expatrio: 3-5 days
+- Deutsche Bank: 2-4 weeks
+
+TIPS FOR EXPATS
+---------------
+1. Open account early (even before arrival if possible)
+2. Get N26 or similar as backup
+3. Have some cash for first days
+4. Set up direct debits for rent/utilities
+5. Get both Girocard AND credit card
+6. Keep your address updated with bank
+7. Check fees carefully
+
+USEFUL CONTACTS
+---------------
+- BaFin (regulator): www.bafin.de
+- Schufa: www.schufa.de
+- Consumer advice: www.verbraucherzentrale.de

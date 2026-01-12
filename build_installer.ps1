@@ -77,6 +77,46 @@ if (-not (Test-Path $innoSetupPath)) {
 }
 Write-Success "Found Inno Setup 6"
 
+# Check required files and directories
+Write-Info "Checking required files and directories..."
+$requiredItems = @{
+    "main.py" = "Main application file";
+    "bottle_app.py" = "Web interface file";
+    "DocumentQA.spec" = "PyInstaller spec file";
+    "installer_script.iss" = "Inno Setup script";
+    "LICENSE.txt" = "License file";
+    "README.txt" = "Readme file";
+    "tax_knowledge" = "Tax knowledge base directory"
+}
+
+$allRequiredPresent = $true
+foreach ($item in $requiredItems.Keys) {
+    if (Test-Path $item) {
+        if ($item -eq "tax_knowledge") {
+            $taxFiles = Get-ChildItem -Path "tax_knowledge\*.txt" -ErrorAction SilentlyContinue
+            if ($taxFiles.Count -ge 5) {
+                Write-Success "Found $($requiredItems[$item]) - $($taxFiles.Count) files"
+            }
+            else {
+                Write-Error-Custom "Missing tax files - Only $($taxFiles.Count) found (need 5)"
+                $allRequiredPresent = $false
+            }
+        }
+        else {
+            Write-Success "Found $($requiredItems[$item])"
+        }
+    }
+    else {
+        Write-Error-Custom "Missing: $item"
+        $allRequiredPresent = $false
+    }
+}
+
+if (-not $allRequiredPresent) {
+    Write-Error-Custom "Some required files are missing!"
+    exit 1
+}
+
 # ============================================================================
 # Step 2: Clean Previous Build (Optional)
 # ============================================================================

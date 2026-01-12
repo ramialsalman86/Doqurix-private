@@ -11,6 +11,16 @@ import json
 import base64
 import io
 import threading
+import re
+try:
+    from docx import Document
+    from docx.oxml.table import CT_Tbl
+    from docx.oxml.text.paragraph import CT_P
+    from docx.table import _Cell, Table
+    from docx.text.paragraph import Paragraph
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
 
 # Initialize Bottle app
 app = Bottle()
@@ -20,9 +30,12 @@ llm = None
 embedder = None
 reranker = None
 collection = None
+tax_collection = None  # Separate collection for tax agent
+buerokratai_collection = None  # Separate collection for BürokratAI agent
 chroma_client = None
 bm25 = None
 bm25_corpus = []
+agents = None  # For insights agent
 
 # Professional Modern UI - ChatGPT/Claude/Gemini Quality
 INDEX_HTML = """
@@ -348,6 +361,8 @@ INDEX_HTML = """
             font-size: 15px;
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
+            user-select: text;
+            cursor: default;
         }
         
         .message.user .message-content {
@@ -471,7 +486,7 @@ INDEX_HTML = """
             border: 2px solid var(--border-color);
             border-radius: 16px;
             display: flex;
-            align-items: flex-end;
+            align-items: center;
             gap: 8px;
             padding: 8px;
             transition: all var(--transition-fast);
@@ -502,18 +517,94 @@ INDEX_HTML = """
             transform: scale(1.1) rotate(10deg);
         }
         
+        .agent-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 12px;
+            height: 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .agent-btn:hover {
+            background: var(--bg-chat-user);
+        }
+        
+        .agent-menu {
+            position: fixed;
+            bottom: 80px;
+            left: 50px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            z-index: 9999;
+            min-width: 220px;
+            overflow: hidden;
+            animation: slideUp 0.2s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .agent-option {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background var(--transition-fast);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        
+        .agent-option:last-child {
+            border-bottom: none;
+        }
+        
+        .agent-option:hover {
+            background: var(--bg-chat-user);
+        }
+        
+        .agent-desc {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        
         textarea {
             flex: 1;
             background: transparent;
             border: none;
-            padding: 10px 12px;
+            padding: 12px;
             color: var(--text-primary);
             font-size: 15px;
             font-family: inherit;
             resize: none;
-            min-height: 24px;
+            min-height: 48px;
             max-height: 200px;
-            line-height: 1.5;
+            line-height: 1.4;
+            vertical-align: top;
+            box-sizing: border-box;
+            align-self: center;
         }
         
         textarea:focus {
@@ -615,9 +706,29 @@ INDEX_HTML = """
         }
         
         /* Responsive */
+        @media (max-width: 1200px) {
+            .welcome {
+                max-width: 500px;
+                padding: 40px 20px;
+            }
+            
+            .welcome h2 {
+                font-size: 28px;
+            }
+            
+            .welcome p {
+                font-size: 15px;
+            }
+            
+            .messages {
+                padding: 24px 20px;
+            }
+        }
+        
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
+                width: 260px;
             }
             
             .sidebar.open {
@@ -628,6 +739,25 @@ INDEX_HTML = """
                 margin-left: 0;
             }
             
+            .welcome {
+                max-width: 90%;
+                padding: 30px 16px;
+            }
+            
+            .welcome h2 {
+                font-size: 24px;
+                margin-bottom: 12px;
+            }
+            
+            .welcome p {
+                font-size: 14px;
+                line-height: 1.5;
+            }
+            
+            .messages {
+                padding: 20px 16px;
+            }
+            
             .message {
                 margin-bottom: 20px;
             }
@@ -636,6 +766,71 @@ INDEX_HTML = """
                 width: 30px;
                 height: 30px;
                 font-size: 16px;
+            }
+            
+            .message-content {
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+            
+            .input-area {
+                padding: 16px;
+            }
+            
+            .header {
+                padding: 12px 16px;
+            }
+            
+            .logo {
+                font-size: 16px;
+            }
+            
+            .upload-btn {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .welcome {
+                padding: 20px 12px;
+            }
+            
+            .welcome h2 {
+                font-size: 20px;
+                margin-bottom: 10px;
+            }
+            
+            .welcome p {
+                font-size: 13px;
+                line-height: 1.4;
+            }
+            
+            .messages {
+                padding: 16px 12px;
+            }
+            
+            .input-area {
+                padding: 12px;
+            }
+            
+            .header {
+                padding: 10px 12px;
+            }
+            
+            .logo {
+                font-size: 14px;
+                gap: 6px;
+            }
+            
+            .logo-icon {
+                font-size: 18px;
+            }
+            
+            .upload-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+                gap: 6px;
             }
         }
     </style>
@@ -660,12 +855,12 @@ INDEX_HTML = """
                 <span>DOQURIX</span>
             </div>
         </div>
-        <input type="file" id="file-input" accept=".pdf" style="display: none;" onchange="uploadFile()">
+        <input type="file" id="file-input" accept=".pdf,.docx" multiple style="display: none;" onchange="uploadFile()">
         <button class="upload-btn" onclick="document.getElementById('file-input').click()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
             </svg>
-            Upload PDF
+            Upload Documents
         </button>
     </div>
     
@@ -690,13 +885,26 @@ INDEX_HTML = """
         <!-- Input Area -->
         <div class="input-area">
             <div class="input-wrapper">
-                <input type="file" id="input-file" accept=".pdf" style="display: none;" onchange="uploadFileFromInput()">
+                <input type="file" id="input-file" accept=".pdf,.docx" multiple style="display: none;" onchange="uploadFileFromInput()">
                 <div class="input-container">
                     <button class="attach-btn" onclick="document.getElementById('input-file').click()" title="Attach file">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8e8ea0" stroke-width="2">
                             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                         </svg>
                     </button>
+                    <button class="agent-btn" onclick="toggleAgentMenu(event)" title="Select Agent" id="agentBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8e8ea0" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <span id="agentLabel" style="font-size: 12px; margin-left: 4px; color: #8e8ea0;">None</span>
+                    </button>
+                    <div class="agent-menu" id="agentMenu" style="display: none;">
+                        <div class="agent-option" onclick="selectAgent('none')">📄 None<span class="agent-desc">User Documents</span></div>
+                        <div class="agent-option" onclick="selectAgent('insights')">💡 Insights<span class="agent-desc">Auto-Analysis</span></div>
+                        <div class="agent-option" onclick="selectAgent('tax_germany')">🇩🇪 Tax Germany<span class="agent-desc">German Tax Expert</span></div>
+                        <div class="agent-option" onclick="selectAgent('ecommerce_germany')">🛒 E-Commerce<span class="agent-desc">Product Search & Compare</span></div>
+                        <div class="agent-option" onclick="selectAgent('buerokratai_germany')">🏛️ BürokratAI<span class="agent-desc">Immigration Helper</span></div>
+                    </div>
                     <textarea id="question" placeholder="Ask me anything about your documents..." rows="1" 
                               oninput="auto_grow(this)" onkeydown="handleKeyPress(event)"></textarea>
                     <button class="send-btn" id="sendBtn" onclick="askQuestion()" disabled title="Send message">
@@ -712,10 +920,61 @@ INDEX_HTML = """
     <script>
         let documents = [];
         let dragCounter = 0;
+        let currentAgent = 'none';  // Track current agent selection
+        
+        // Agent selection functions
+        function toggleAgentMenu(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('agentMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function selectAgent(agent) {
+            currentAgent = agent;
+            const label = document.getElementById('agentLabel');
+            const agentNames = {
+                'none': 'None',
+                'insights': 'Insights',
+                'tax_germany': 'Tax Germany',
+                'ecommerce_germany': 'E-Commerce',
+                'buerokratai_germany': 'BürokratAI'
+            };
+            label.textContent = agentNames[agent] || 'None';
+            document.getElementById('agentMenu').style.display = 'none';
+            
+            // Update placeholder based on agent without moving focus
+            const textarea = document.getElementById('question');
+            const currentFocus = document.activeElement;
+            if (agent === 'tax_germany') {
+                textarea.placeholder = 'Ask me about German taxes...';
+            } else if (agent === 'ecommerce_germany') {
+                textarea.placeholder = 'What products are you looking for?';
+            } else if (agent === 'buerokratai_germany') {
+                textarea.placeholder = 'Ask about visas, Anmeldung, insurance, work permits...';
+            } else if (agent === 'insights') {
+                textarea.placeholder = 'Upload documents for automatic insights...';
+            } else {
+                textarea.placeholder = 'Ask me anything about your documents...';
+            }
+            
+            // Restore focus if textarea had it
+            if (currentFocus === textarea) {
+                textarea.focus();
+            }
+        }
+        
+        // Close agent menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const agentBtn = document.getElementById('agentBtn');
+            const agentMenu = document.getElementById('agentMenu');
+            if (agentBtn && agentMenu && !agentBtn.contains(event.target) && !agentMenu.contains(event.target)) {
+                agentMenu.style.display = 'none';
+            }
+        });
         
         // Auto-grow textarea
         function auto_grow(element) {
-            element.style.height = "24px";
+            element.style.height = "48px";
             element.style.height = (element.scrollHeight) + "px";
             
             // Enable/disable send button
@@ -766,19 +1025,23 @@ INDEX_HTML = """
         // File upload from button
         async function uploadFile() {
             const fileInput = document.getElementById('file-input');
-            const file = fileInput.files[0];
-            if (!file) return;
+            const files = fileInput.files;
+            if (!files || files.length === 0) return;
             
-            await processUpload(file);
+            for (let file of files) {
+                await processUpload(file);
+            }
             fileInput.value = '';
         }
         
         async function uploadFileFromInput() {
             const fileInput = document.getElementById('input-file');
-            const file = fileInput.files[0];
-            if (!file) return;
+            const files = fileInput.files;
+            if (!files || files.length === 0) return;
             
-            await processUpload(file);
+            for (let file of files) {
+                await processUpload(file);
+            }
             fileInput.value = '';
         }
         
@@ -882,7 +1145,9 @@ INDEX_HTML = """
             const question = questionInput.value.trim();
             
             if (!question) return;
-            if (documents.length === 0) {
+            
+            // Tax agent, E-commerce agent, and BürokratAI don't require documents
+            if (currentAgent !== 'tax_germany' && currentAgent !== 'ecommerce_germany' && currentAgent !== 'buerokratai_germany' && documents.length === 0) {
                 alert('⚠️ Please upload documents first');
                 return;
             }
@@ -906,7 +1171,10 @@ INDEX_HTML = """
                 const response = await fetch('/query', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({question: question})
+                    body: JSON.stringify({
+                        question: question,
+                        agent: currentAgent  // Send selected agent
+                    })
                 });
                 
                 const result = await response.json();
@@ -979,26 +1247,31 @@ def index():
 
 @app.route('/upload', method='POST')
 def upload():
-    """Handle PDF upload"""
+    """Handle document upload - supports PDF and DOCX"""
     try:
         upload_file = request.files.get('file')
         if not upload_file:
             return json.dumps({'success': False, 'error': 'No file provided'})
         
         filename = upload_file.filename
-        if not filename.endswith('.pdf'):
-            return json.dumps({'success': False, 'error': 'Only PDF files allowed'})
+        file_ext = os.path.splitext(filename)[1].lower()
+        
+        if file_ext not in ['.pdf', '.docx']:
+            return json.dumps({'success': False, 'error': 'Only PDF and DOCX files allowed'})
         
         file_content = upload_file.file.read()
         
-        # Extract text
-        import PyPDF2
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
-        text = ""
-        for page in pdf_reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+        # Extract text based on file type
+        if file_ext == '.pdf':
+            import PyPDF2
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
+            text = ""
+            for page in pdf_reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+        elif file_ext == '.docx':
+            text = extract_text_from_docx_bytes(file_content)
         
         # Chunk and add to vector store
         chunks = smart_chunk_text(text)
@@ -1058,15 +1331,36 @@ def delete():
 
 @app.route('/query', method='POST')
 def query():
-    """Handle question query"""
+    """Handle question query with agent support"""
+    import time
+    
     try:
+        start_time = time.time()  # Track start time
+        
         data = request.json
         question = data.get('question', '').strip()
+        agent = data.get('agent', 'none')  # Get selected agent
         
         if not question:
             return json.dumps({'success': False, 'error': 'No question provided'})
         
-        # Search documents - use same parameters as desktop
+        # Route to tax agent if selected
+        if agent == 'tax_germany':
+            return query_tax_agent(question, start_time)
+        
+        # Route to insights agent if selected
+        if agent == 'insights':
+            return query_insights_agent(question, start_time)
+        
+        # Route to e-commerce agent if selected
+        if agent == 'ecommerce_germany':
+            return query_ecommerce_agent(question, start_time)
+        
+        # Route to BürokratAI agent if selected
+        if agent == 'buerokratai_germany':
+            return query_buerokratai_agent(question, start_time)
+        
+        # Default: Standard document search
         doc_results = advanced_hybrid_search(question, n_results=15)
         
         if not doc_results:
@@ -1078,12 +1372,113 @@ def query():
         # Generate answer
         answer = generate_answer(question, reranked)
         
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        
+        # Add elapsed time to answer
+        answer = f"{answer}\n\n⏱️ {elapsed_time:.2f}s"
+        
         response.content_type = 'application/json'
-        return json.dumps({'success': True, 'answer': answer})
+        return json.dumps({
+            'success': True, 
+            'answer': answer,
+            'elapsed_time': elapsed_time
+        })
         
     except Exception as e:
         response.content_type = 'application/json'
         return json.dumps({'success': False, 'error': str(e)})
+
+
+def extract_text_from_docx_bytes(file_bytes):
+    """Advanced extraction from DOCX bytes with comprehensive content parsing"""
+    if not DOCX_AVAILABLE:
+        raise ImportError("python-docx library is required for Word document support.")
+    
+    try:
+        doc = Document(io.BytesIO(file_bytes))
+        full_text = []
+        
+        # Extract headers from all sections
+        for section in doc.sections:
+            if section.header:
+                header_text = extract_header_footer_text(section.header)
+                if header_text.strip():
+                    full_text.append(f"[HEADER] {header_text}")
+        
+        # Process document body with structured extraction
+        for element in doc.element.body:
+            if isinstance(element, CT_P):
+                # Extract paragraph text with formatting context
+                paragraph = Paragraph(element, doc)
+                para_text = paragraph.text.strip()
+                
+                if para_text:
+                    # Detect heading styles for better structure
+                    if paragraph.style.name.startswith('Heading'):
+                        level = paragraph.style.name.replace('Heading ', '')
+                        full_text.append(f"\\n[HEADING {level}] {para_text}\\n")
+                    elif paragraph.style.name == 'Title':
+                        full_text.append(f"\\n[TITLE] {para_text}\\n")
+                    elif paragraph.style.name == 'List Paragraph':
+                        full_text.append(f"• {para_text}")
+                    else:
+                        full_text.append(para_text)
+            
+            elif isinstance(element, CT_Tbl):
+                # Advanced table extraction with structure preservation
+                table = Table(element, doc)
+                table_text = extract_table_content(table)
+                if table_text:
+                    full_text.append(f"\\n[TABLE]\\n{table_text}\\n[/TABLE]\\n")
+        
+        # Extract footers from all sections
+        for section in doc.sections:
+            if section.footer:
+                footer_text = extract_header_footer_text(section.footer)
+                if footer_text.strip():
+                    full_text.append(f"[FOOTER] {footer_text}")
+        
+        # Join with proper spacing and clean up
+        text = '\\n'.join(full_text)
+        text = re.sub(r'\\n{3,}', '\\n\\n', text)  # Remove excessive newlines
+        
+        return text
+        
+    except Exception as e:
+        raise Exception(f"Error extracting text from Word document: {str(e)}")
+
+
+def extract_header_footer_text(header_footer):
+    """Extract text from header or footer"""
+    text_parts = []
+    for paragraph in header_footer.paragraphs:
+        if paragraph.text.strip():
+            text_parts.append(paragraph.text.strip())
+    return ' '.join(text_parts)
+
+
+def extract_table_content(table):
+    """Extract and structure table content intelligently"""
+    table_data = []
+    
+    # Process each row
+    for i, row in enumerate(table.rows):
+        row_data = []
+        for cell in row.cells:
+            # Extract text from each cell, handling merged cells
+            cell_text = ' '.join(paragraph.text.strip() for paragraph in cell.paragraphs if paragraph.text.strip())
+            row_data.append(cell_text)
+        
+        if any(row_data):  # Only add non-empty rows
+            # Format first row as header if it looks like headers
+            if i == 0 and all(cell.strip() for cell in row_data):
+                table_data.append(' | '.join(row_data))
+                table_data.append('-' * 50)  # Separator line
+            else:
+                table_data.append(' | '.join(row_data))
+    
+    return '\\n'.join(table_data)
 
 
 def smart_chunk_text(text, chunk_size=600, overlap=200):
@@ -1129,8 +1524,16 @@ def smart_chunk_text(text, chunk_size=600, overlap=200):
     return chunks
 
 
-def advanced_hybrid_search(question, n_results=15):
-    """Advanced hybrid search - matches desktop implementation"""
+def advanced_hybrid_search(question, n_results=15, alpha=0.7):
+    """
+    Advanced hybrid search with semantic prioritization
+    
+    Args:
+        question: The search query
+        n_results: Number of results to return
+        alpha: Weight for vector search (0-1). Higher = more semantic.
+               Default 0.7 = 70% semantic, 30% keyword matching
+    """
     global bm25, bm25_corpus
     
     # Check if collection has documents
@@ -1147,18 +1550,32 @@ def advanced_hybrid_search(question, n_results=15):
     combined_docs = {}
     k = 60
     
-    # Use doc content as key (first 150 chars) to match desktop
-    for rank, (doc, metadata) in enumerate(zip(vector_results['documents'][0], 
-                                                 vector_results['metadatas'][0])):
+    # Add vector results with HIGHER weight (alpha = 0.7 by default)
+    for rank, (doc, metadata, distance) in enumerate(zip(
+        vector_results['documents'][0],
+        vector_results['metadatas'][0],
+        vector_results['distances'][0]
+    )):
+        # Filter by minimum similarity
+        # For cosine distance: 0 = identical, 2 = opposite
+        similarity = 1 - (distance / 2)  # Convert to similarity score [0-1]
+        
+        # Skip documents that are too dissimilar (< 30% similar)
+        if similarity < 0.3:
+            continue
+        
         doc_key = doc[:150]
         if doc_key not in combined_docs:
             combined_docs[doc_key] = {
-                'doc': doc, 
-                'metadata': metadata, 
-                'score': 0
+                'doc': doc,
+                'metadata': metadata,
+                'score': 0,
+                'vector_similarity': similarity  # Store for debugging
             }
-        combined_docs[doc_key]['score'] += 1 / (k + rank)
+        # Weight by alpha (default 70% for semantic understanding)
+        combined_docs[doc_key]['score'] += alpha * (1 / (k + rank))
     
+    # BM25 search (keywords) with LOWER weight (1 - alpha = 0.3 by default)
     if bm25 and bm25_corpus:
         import numpy as np
         tokenized_query = question.lower().split()
@@ -1175,13 +1592,14 @@ def advanced_hybrid_search(question, n_results=15):
                     if idx < len(all_docs['metadatas']):
                         metadata = all_docs['metadatas'][idx]
                         combined_docs[doc_key] = {
-                            'doc': doc, 
-                            'metadata': metadata, 
+                            'doc': doc,
+                            'metadata': metadata,
                             'score': 0
                         }
                 
                 if doc_key in combined_docs:
-                    combined_docs[doc_key]['score'] += 1 / (k + rank)
+                    # Weight by (1 - alpha) (default 30% for keyword matching)
+                    combined_docs[doc_key]['score'] += (1 - alpha) * (1 / (k + rank))
     
     sorted_docs = sorted(combined_docs.values(), key=lambda x: x['score'], reverse=True)
     return sorted_docs[:n_results]
@@ -1332,6 +1750,435 @@ Answer:<|im_end|>
     return answer
 
 
+def query_tax_agent(question, start_time):
+    """Handle tax agent queries - searches German tax knowledge base"""
+    import time
+    
+    try:
+        if tax_collection is None:
+            return json.dumps({'success': False, 'error': 'Tax agent not initialized'})
+        
+        # Generate query embedding
+        query_embedding = embedder.encode([question], convert_to_tensor=False)[0]
+        
+        # Search tax collection
+        search_results = tax_collection.query(
+            query_embeddings=[query_embedding.tolist()],
+            n_results=15,
+            include=['documents', 'metadatas', 'distances']
+        )
+        
+        documents = search_results['documents'][0] if search_results['documents'] else []
+        metadatas = search_results['metadatas'][0] if search_results['metadatas'] else []
+        distances = search_results['distances'][0] if search_results['distances'] else []
+        
+        if not documents:
+            return json.dumps({
+                'success': True,
+                'answer': "I don't have specific information about that in my German tax knowledge base. Please try rephrasing your question.",
+                'elapsed_time': time.time() - start_time
+            })
+        
+        # Prepare contexts for reranking
+        contexts_for_reranking = []
+        for doc, meta, dist in zip(documents, metadatas, distances):
+            contexts_for_reranking.append({
+                'text': doc,
+                'metadata': meta,
+                'distance': dist
+            })
+        
+        # Rerank
+        pairs = [[question, ctx['text']] for ctx in contexts_for_reranking]
+        rerank_scores = reranker.predict(pairs)
+        
+        for i, ctx in enumerate(contexts_for_reranking):
+            ctx['rerank_score'] = float(rerank_scores[i])
+        
+        reranked_contexts = sorted(contexts_for_reranking, key=lambda x: x['rerank_score'], reverse=True)
+        top_contexts = reranked_contexts[:3]
+        
+        # Build context string (truncated for small model)
+        context_str = ""
+        for i, ctx in enumerate(top_contexts, 1):
+            source = ctx['metadata'].get('source', 'Unknown')
+            truncated_text = ctx['text'][:400] + "..." if len(ctx['text']) > 400 else ctx['text']
+            context_str += f"[Source {i} - {source}]\n{truncated_text}\n\n"
+        
+        # Generate answer
+        tax_system_prompt = "You are a German tax expert. Provide accurate information about German taxes including rates, thresholds, and procedures. Use the provided context to give precise answers."
+        
+        prompt = f"""<|im_start|>system
+{tax_system_prompt}<|im_end|>
+<|im_start|>user
+Based on the following context, answer the question clearly and professionally.
+
+Context:
+{context_str}
+
+Question: {question}
+
+Answer:<|im_end|>
+<|im_start|>assistant
+"""
+        
+        output = llm(
+            prompt,
+            max_tokens=300,
+            temperature=0.7,
+            top_p=0.9,
+            repeat_penalty=1.1,
+            stop=["<|im_end|>", "<|im_start|>"],
+            top_k=40
+        )
+        
+        answer = output['choices'][0]['text'].strip()
+        elapsed_time = time.time() - start_time
+        
+        # Format answer
+        answer = f"🇩🇪 **German Tax Agent**\n\n{answer}\n\n📚 Sources:\n"
+        for i, ctx in enumerate(top_contexts, 1):
+            source = ctx['metadata'].get('source', 'Unknown')
+            score = ctx['rerank_score']
+            answer += f"\n[{i}] {source} (Relevance: {score:.3f})"
+        
+        answer += f"\n\n⏱️ {elapsed_time:.2f}s"
+        
+        return json.dumps({
+            'success': True,
+            'answer': answer,
+            'elapsed_time': elapsed_time
+        })
+        
+    except Exception as e:
+        return json.dumps({'success': False, 'error': f'Tax agent error: {str(e)}'})
+
+
+def query_insights_agent(question, start_time):
+    """Handle insights agent queries - auto-analysis"""
+    import time
+    
+    try:
+        if agents is None:
+            return json.dumps({'success': False, 'error': 'Insights agent not initialized'})
+        
+        # Use insights agent to generate analysis
+        doc_results = advanced_hybrid_search(question, n_results=15)
+        
+        if not doc_results:
+            return json.dumps({'success': False, 'error': 'No relevant documents found'})
+        
+        reranked = rerank_documents(question, doc_results, top_k=5)
+        
+        # Generate insights using agent
+        insights = agents.generate_document_insights(reranked)
+        
+        elapsed_time = time.time() - start_time
+        answer = f"💡 **Insights Agent**\n\n{insights}\n\n⏱️ {elapsed_time:.2f}s"
+        
+        return json.dumps({
+            'success': True,
+            'answer': answer,
+            'elapsed_time': elapsed_time
+        })
+        
+    except Exception as e:
+        return json.dumps({'success': False, 'error': f'Insights agent error: {str(e)}'})
+
+
+def query_ecommerce_agent(question, start_time):
+    """Query professional e-commerce agent for product search"""
+    import time
+    from ecommerce_agent import ECommerceAgent
+    
+    try:
+        # Initialize professional agent
+        agent = ECommerceAgent(cache_dir='./cache/ecommerce')
+        
+        try:
+            # ALWAYS use LLM to extract proper search keywords first
+            print(f"🔑 Extracting search keywords from: '{question}'")
+            search_keywords = agent.extract_search_keywords(question, llm)
+            print(f"✓ Search keywords: '{search_keywords}'")
+            
+            # First attempt: Search with extracted keywords
+            products = agent.search_products(search_keywords, max_results=15)
+            optimized_query = search_keywords  # Keep track of what we searched for
+            
+            # If no products found, try additional optimization
+            if not products or len(products) == 0:
+                print(f"⚠ No products found for: {search_keywords}")
+                print(f"🤖 Using LLM to further optimize search query...")
+                
+                try:
+                    # Use LLM to rephrase/optimize the query
+                    optimization_prompt = """Du bist ein E-Commerce-Suchexperte. Optimiere die folgende Produktsuchanfrage für bessere Ergebnisse:
+
+1. Verwende gängige Produktkategorien (z.B. "günstig" → "budget", "billig" → "preiswert")
+2. Füge relevante Suchbegriffe hinzu (z.B. "phone" → "smartphone")
+3. Entferne zu spezifische oder unklare Begriffe
+4. Nutze deutsche Standardbegriffe, die Händler verwenden
+
+Gib NUR die optimierte Suchanfrage zurück, keine Erklärung."""
+                    
+                    opt_response = llm.create_chat_completion(
+                        messages=[
+                            {"role": "system", "content": optimization_prompt},
+                            {"role": "user", "content": f"Optimiere diese Suche: {search_keywords}"}
+                        ],
+                        max_tokens=50,
+                        temperature=0.3
+                    )
+                    
+                    optimized_query = opt_response['choices'][0]['message']['content'].strip()
+                    print(f"✓ Further optimized query: {optimized_query}")
+                    
+                    # Second attempt with optimized query
+                    if optimized_query and optimized_query != search_keywords:
+                        products = agent.search_products(optimized_query, max_results=15)
+                        print(f"✓ Found {len(products)} products with optimized query")
+                    
+                except Exception as e:
+                    print(f"✗ Query optimization failed: {e}")
+            
+            # Final fallback: Use intelligent fallback results
+            if not products or len(products) == 0:
+                print(f"📋 Using intelligent fallback results...")
+                products = agent.get_fallback_results(optimized_query or search_keywords)
+            
+            # Format context for LLM
+            context = agent.format_results_for_llm(products)
+            
+            # Professional LLM analysis
+            system_prompt = """Sie sind ein E-Commerce-Berater. Geben Sie eine präzise Kaufempfehlung:
+
+1. Bester Preis: Welcher Händler hat das günstigste Angebot?
+2. Beste Wahl: Welche Option empfehlen Sie und warum? (1-2 Sätze)
+3. Alternative: Eine weitere gute Option nennen
+
+Kurz und präzise antworten."""
+            
+            user_prompt = f"Produkte für: {question}\n\n{context}\n\nEmpfehlung:"
+            
+            # Generate analysis
+            llm_response = llm.create_chat_completion(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=400,
+                temperature=0.4
+            )
+            
+            llm_answer = llm_response['choices'][0]['message']['content']
+            
+            # Beautiful HTML format with HONEST data
+            answer = f"""
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px;">
+    <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">🛒 {question}</h2>
+"""
+            
+            # Always show what keywords we searched for
+            answer += f"""
+    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 10px 15px; margin: 15px 0; border-radius: 4px;">
+        🔑 <strong>Suchbegriffe:</strong> <em>{optimized_query}</em>
+    </div>
+"""
+            
+            answer += f"""
+    <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px; margin: 15px 0; border-radius: 4px;">
+        <h3 style="margin: 0 0 10px 0; color: #16a34a;">💡 Empfehlung</h3>
+        <p style="margin: 0; line-height: 1.6; color: #1e293b; font-size: 1em;">{llm_answer}</p>
+    </div>
+    
+    <h3 style="color: #1e40af; margin-top: 25px;">🏪 Wo einkaufen?</h3>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 0.9em;">Klicke auf einen Shop um Produkte zu vergleichen:</p>
+"""
+            
+            # Card-based layout for retailers
+            for i, product in enumerate(products[:6]):
+                # Card colors based on position
+                colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+                card_color = colors[i % len(colors)]
+                
+                # Get highlight (stored in title) and why (stored in features)
+                highlight = product.title if product.title else '🛒'
+                why = product.features[0] if product.features else ''
+                price_range = product.availability if product.availability else ''
+                
+                answer += f"""
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid {card_color};">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+            <div style="flex: 1; min-width: 250px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 1.3em; font-weight: 700; color: #1e293b;">{product.merchant}</span>
+                    <span style="background: {card_color}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">{highlight}</span>
+                </div>
+                <p style="color: #64748b; margin: 0 0 8px 0; font-size: 0.95em; line-height: 1.5;">{product.description}</p>
+                <p style="color: #059669; margin: 0; font-size: 0.85em; font-weight: 500;">✓ {why}</p>
+            </div>
+            <div style="text-align: right; min-width: 150px;">
+                <div style="color: #1e293b; font-size: 0.9em; margin-bottom: 10px;">
+                    <span style="color: #64748b;">Preisspanne:</span><br>
+                    <strong style="font-size: 1.1em; color: #059669;">{price_range}</strong>
+                </div>
+                <a href="{product.url}" target="_blank" style="display: inline-block; background: {card_color}; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: opacity 0.2s;">
+                    Jetzt suchen →
+                </a>
+            </div>
+        </div>
+    </div>
+"""
+            
+            elapsed_time = time.time() - start_time
+            answer += f"""
+    <div style="background: #fef3c7; border-radius: 8px; padding: 12px 15px; margin-top: 20px;">
+        <p style="margin: 0; color: #92400e; font-size: 0.85em;">
+            ⚠️ <strong>Hinweis:</strong> Die Links führen zu Suchseiten der Händler. Die tatsächlichen Preise findest du dort.
+        </p>
+    </div>
+    
+    <p style="margin-top: 15px; color: #94a3b8; font-size: 0.8em; text-align: right;">⏱️ {elapsed_time:.2f}s</p>
+</div>
+"""
+            
+            return json.dumps({
+                'success': True,
+                'answer': answer,
+                'elapsed_time': elapsed_time
+            })
+            
+        finally:
+            agent.close()
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"E-commerce error: {error_details}")
+        return json.dumps({'success': False, 'error': f'E-commerce-Suche Fehler: {str(e)}'})
+
+
+def query_buerokratai_agent(question, start_time):
+    """Handle BürokratAI queries - searches German immigration knowledge base"""
+    import time
+    from buerokratai_agent import BUEROKRATAI_SYSTEM_PROMPT, classify_topic, get_relevant_links
+    
+    try:
+        if buerokratai_collection is None:
+            return json.dumps({'success': False, 'error': 'BürokratAI agent not initialized'})
+        
+        # Classify the topic for better context
+        topics = classify_topic(question)
+        
+        # Generate query embedding
+        query_embedding = embedder.encode([question], convert_to_tensor=False)[0]
+        
+        # Search BürokratAI collection
+        search_results = buerokratai_collection.query(
+            query_embeddings=[query_embedding.tolist()],
+            n_results=15,
+            include=['documents', 'metadatas', 'distances']
+        )
+        
+        documents = search_results['documents'][0] if search_results['documents'] else []
+        metadatas = search_results['metadatas'][0] if search_results['metadatas'] else []
+        distances = search_results['distances'][0] if search_results['distances'] else []
+        
+        if not documents:
+            return json.dumps({
+                'success': True,
+                'answer': "🇩🇪 **BürokratAI**\n\nI don't have specific information about that topic in my knowledge base. Please try asking about:\n\n• Visa types (Blue Card, student visa, family reunification)\n• Anmeldung (address registration)\n• Health insurance (GKV/PKV)\n• Tax ID and tax classes\n• Work permits\n• Integration courses\n• Permanent residence\n\n⚠️ For official information, visit: www.make-it-in-germany.com",
+                'elapsed_time': time.time() - start_time
+            })
+        
+        # Prepare contexts for reranking
+        contexts_for_reranking = []
+        for doc, meta, dist in zip(documents, metadatas, distances):
+            contexts_for_reranking.append({
+                'text': doc,
+                'metadata': meta,
+                'distance': dist
+            })
+        
+        # Rerank
+        pairs = [[question, ctx['text']] for ctx in contexts_for_reranking]
+        rerank_scores = reranker.predict(pairs)
+        
+        for i, ctx in enumerate(contexts_for_reranking):
+            ctx['rerank_score'] = float(rerank_scores[i])
+        
+        reranked_contexts = sorted(contexts_for_reranking, key=lambda x: x['rerank_score'], reverse=True)
+        top_contexts = reranked_contexts[:4]  # Use top 4 for immigration (more context needed)
+        
+        # Build context string
+        context_str = ""
+        for i, ctx in enumerate(top_contexts, 1):
+            source = ctx['metadata'].get('source', 'Unknown')
+            truncated_text = ctx['text'][:600] + "..." if len(ctx['text']) > 600 else ctx['text']
+            context_str += f"[Source {i} - {source}]\n{truncated_text}\n\n"
+        
+        # Generate answer with BürokratAI system prompt
+        prompt = f"""<|im_start|>system
+{BUEROKRATAI_SYSTEM_PROMPT}<|im_end|>
+<|im_start|>user
+Based on the following German immigration and bureaucracy information, answer the question clearly and helpfully. Include specific deadlines, costs, and document requirements when relevant.
+
+Context:
+{context_str}
+
+Question: {question}
+
+Answer:<|im_end|>
+<|im_start|>assistant
+"""
+        
+        output = llm(
+            prompt,
+            max_tokens=500,  # More tokens for detailed immigration answers
+            temperature=0.6,
+            top_p=0.9,
+            repeat_penalty=1.1,
+            stop=["<|im_end|>", "<|im_start|>"],
+            top_k=40
+        )
+        
+        answer = output['choices'][0]['text'].strip()
+        elapsed_time = time.time() - start_time
+        
+        # Format answer with sources
+        formatted_answer = f"🇩🇪 **BürokratAI - Immigration Assistant**\n\n{answer}\n\n"
+        
+        # Add sources
+        formatted_answer += "📚 **Sources:**\n"
+        for i, ctx in enumerate(top_contexts, 1):
+            source = ctx['metadata'].get('source', 'Unknown')
+            score = ctx['rerank_score']
+            formatted_answer += f"\n[{i}] {source} (Relevance: {score:.3f})"
+        
+        # Add relevant links
+        relevant_links = get_relevant_links(topics)
+        if relevant_links:
+            formatted_answer += "\n\n🔗 **Useful Links:**\n"
+            for name, url in relevant_links[:3]:
+                formatted_answer += f"\n• [{name}]({url})"
+        
+        formatted_answer += f"\n\n⏱️ {elapsed_time:.2f}s"
+        
+        # Add disclaimer
+        formatted_answer += "\n\n⚠️ *This information is for guidance only. Please verify with official German authorities for the most current regulations.*"
+        
+        return json.dumps({
+            'success': True,
+            'answer': formatted_answer,
+            'elapsed_time': elapsed_time
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"BürokratAI error: {traceback.format_exc()}")
+        return json.dumps({'success': False, 'error': f'BürokratAI agent error: {str(e)}'})
+
+
 def rebuild_bm25_index():
     """Rebuild BM25 index"""
     global bm25, bm25_corpus
@@ -1346,13 +2193,25 @@ def rebuild_bm25_index():
 
 def init_models(desktop_app):
     """Initialize models from desktop app"""
-    global llm, embedder, reranker, collection, chroma_client
+    global llm, embedder, reranker, collection, chroma_client, tax_collection, buerokratai_collection, agents
     
     # Share the expensive models (LLM, embedder, reranker)
     llm = desktop_app.llm
     embedder = desktop_app.embedder
     reranker = desktop_app.reranker
     chroma_client = desktop_app.chroma_client
+    
+    # Share agents if available
+    if hasattr(desktop_app, 'agents'):
+        agents = desktop_app.agents
+    
+    # Share tax collection if available
+    if hasattr(desktop_app, 'tax_collection'):
+        tax_collection = desktop_app.tax_collection
+    
+    # Share BürokratAI collection if available
+    if hasattr(desktop_app, 'buerokratai_collection'):
+        buerokratai_collection = desktop_app.buerokratai_collection
     
     # Create SEPARATE collection for web version
     try:

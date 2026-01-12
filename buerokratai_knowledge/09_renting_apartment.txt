@@ -1,0 +1,241 @@
+RENTING AN APARTMENT IN GERMANY (WOHNUNGSSUCHE)
+================================================
+Source: Mieterbund, German Tenant Protection Laws
+Last Updated: January 2026
+
+OVERVIEW OF GERMAN RENTAL MARKET
+--------------------------------
+Germany has one of the highest tenant rates in Europe (~50% rent).
+Rental market is highly competitive, especially in major cities.
+Tenant protection is strong - landlords cannot easily evict.
+
+TYPES OF RENTAL ACCOMMODATION
+-----------------------------
+
+1. Wohnung (Apartment)
+   - Most common rental type
+   - Can be furnished (möbliert) or unfurnished (unmöbliert)
+   - Usually unfurnished means NO kitchen!
+
+2. WG (Wohngemeinschaft) - Shared Apartment
+   - Share apartment with others
+   - Each person has own room
+   - Share kitchen/bathroom
+   - Popular with students and young professionals
+   - Cheaper option
+
+3. Apartment (Einzimmerwohnung)
+   - Studio/one-room apartment
+   - Living and sleeping in one room
+   - Own kitchen and bathroom
+
+4. Zimmer (Room)
+   - Single room in someone else's apartment
+   - May share facilities
+   - Subtenant (Untermieter)
+
+UNDERSTANDING GERMAN RENT
+-------------------------
+
+Kaltmiete (Cold Rent):
+- Base rent without utilities
+- What landlord receives
+
+Nebenkosten (Additional Costs):
+- Utilities: Heating, water, garbage, building insurance
+- Usually paid as monthly advance (Vorauszahlung)
+- Settled annually (Nebenkostenabrechnung)
+
+Warmmiete (Warm Rent):
+- Kaltmiete + Nebenkosten
+- Total monthly payment
+- What you actually pay
+
+NOT typically included:
+- Electricity (Strom) - separate contract with provider
+- Internet/TV - separate contract
+- Sometimes heating (check listing)
+
+APARTMENT LISTINGS TERMINOLOGY
+------------------------------
+Common terms in listings:
+
+Zimmer (Zi.): Number of rooms (excluding kitchen/bath)
+qm or m²: Square meters
+EG: Erdgeschoss (ground floor)
+1.OG, 2.OG: 1st floor, 2nd floor (above ground)
+DG: Dachgeschoss (top floor/attic)
+KM: Kaltmiete (cold rent)
+WM: Warmmiete (warm rent)
+NK: Nebenkosten
+Kaution: Security deposit
+EBK: Einbauküche (fitted kitchen included)
+provisionsfrei: No agent fee
+möbliert: Furnished
+unmöbliert: Unfurnished (usually no kitchen!)
+Altbau: Old building (pre-1949, high ceilings)
+Neubau: New building
+Balkon: Balcony
+Terrasse: Terrace
+Keller: Basement storage
+
+REQUIRED DOCUMENTS FOR RENTING
+------------------------------
+Landlords typically require:
+
+1. Selbstauskunft (Self-disclosure form)
+   - Personal information
+   - Employment status
+   - Income
+   - Previous landlord contacts
+
+2. Schufa-Auskunft (Credit report)
+   - Get free annual copy: meineschufa.de
+   - Or pay for immediate online access
+   - Shows credit history and score
+
+3. Proof of Income (Einkommensnachweis)
+   - Last 3 pay slips (Gehaltsabrechnungen)
+   - Employment contract
+   - Rule of thumb: Rent should be <30-40% of net income
+
+4. Copy of ID/Passport
+   - Residence permit for non-EU citizens
+
+5. Mietschuldenfreiheitsbescheinigung
+   - Letter from previous landlord confirming no rent debts
+   - Not always required, but helpful
+
+6. Employment Contract
+   - Shows stable employment
+
+For newcomers without German documents:
+- Bank statements from home country
+- Employment contract for new German job
+- Employer guarantee letter
+- Larger deposit (if landlord agrees)
+
+KAUTION (SECURITY DEPOSIT)
+--------------------------
+Legal rules:
+- Maximum: 3 months cold rent (Kaltmiete)
+- Must be kept in separate savings account
+- Interest belongs to tenant
+- Returned after move-out (can take months)
+- Landlord can use for damages/unpaid rent
+
+Payment options:
+- One-time payment
+- 3 monthly installments (legal right)
+- Bank guarantee (Bankbürgschaft)
+- Deposit insurance (Mietkautionsversicherung)
+
+MIETVERTRAG (RENTAL CONTRACT)
+-----------------------------
+Types of contracts:
+
+Unbefristeter Mietvertrag:
+- Unlimited/indefinite term
+- Most common
+- Best for tenants
+- Landlord needs valid reason to terminate
+
+Befristeter Mietvertrag:
+- Fixed term (e.g., 2 years)
+- Must state valid reason for time limit
+- Automatically becomes unlimited if no valid reason
+
+Zwischenmiete:
+- Sublease/temporary
+- While main tenant is away
+- Fixed term
+
+TENANT RIGHTS IN GERMANY
+------------------------
+German law strongly protects tenants:
+
+✓ Landlord needs valid reason to terminate (unlimited contracts)
+✓ Notice period: Usually 3 months for tenant, 3-9 months for landlord
+✓ Rent increase limits (Mietpreisbremse in many cities)
+✓ Right to 3-month installments for deposit
+✓ Landlord must give 24-hour notice to visit
+✓ Cannot be evicted in winter without alternative housing
+✓ Protected from arbitrary rent increases
+
+MIETPREISBREMSE (RENT CONTROL)
+------------------------------
+In designated areas (most large cities):
+- Rent for new tenants limited to 10% above local average
+- Exceptions: New buildings, comprehensive renovation
+- Check if your city has this: Usually Berlin, Munich, Hamburg, Frankfurt, etc.
+
+KÜNDIGUNGSSCHUTZ (TERMINATION PROTECTION)
+-----------------------------------------
+Landlord can only terminate if:
+- Personal use (Eigenbedarf) - needs apartment for self/family
+- Significant contract violation by tenant
+- Economic necessity (very rare)
+
+Notice periods:
+- Tenant: Always 3 months
+- Landlord: 3 months (up to 5 years tenancy)
+- Landlord: 6 months (5-8 years tenancy)
+- Landlord: 9 months (over 8 years tenancy)
+
+WHERE TO SEARCH FOR APARTMENTS
+------------------------------
+
+Online portals:
+- ImmoScout24 (immobilienscout24.de) - largest
+- Immowelt (immowelt.de)
+- WG-Gesucht (wg-gesucht.de) - for shared flats
+- eBay Kleinanzeigen (kleinanzeigen.de)
+- Facebook groups (city-specific)
+
+For furnished/short-term:
+- Wunderflats (wunderflats.com)
+- HousingAnywhere
+- Spotahome
+- Nestpick
+
+Housing companies (Wohnungsbaugesellschaften):
+- City-owned companies
+- Often cheaper
+- Long waiting lists
+- Apply directly: Search "[city name] Wohnungsbaugesellschaft"
+
+VIEWINGS (WOHNUNGSBESICHTIGUNG)
+-------------------------------
+Tips for apartment viewings:
+
+Prepare:
+- Bring all documents
+- Dress professionally
+- Arrive on time
+- Bring proof of income
+
+Questions to ask:
+- What's included in Nebenkosten?
+- Who handles repairs?
+- When is the apartment available?
+- Are there any planned renovations?
+- Rules about pets, subletting?
+
+Be ready to:
+- Decide quickly (apartments go fast)
+- Make good impression (competition is fierce)
+- Have documents ready immediately
+
+WOHNUNGSGEBERBESTÄTIGUNG
+------------------------
+After moving in:
+- Landlord MUST provide this within 2 weeks
+- You need it for Anmeldung (address registration)
+- It's legally required
+- If landlord refuses: Report to Bürgeramt
+
+USEFUL CONTACTS
+---------------
+- Mieterbund (Tenants Association): www.mieterbund.de
+- Consumer protection: www.verbraucherzentrale.de
+- Rental price index: Contact local city

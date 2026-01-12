@@ -1,0 +1,259 @@
+WORK PERMITS AND EMPLOYMENT IN GERMANY (ARBEITSERLAUBNIS)
+=========================================================
+Source: Federal Employment Agency (Bundesagentur für Arbeit), BAMF
+Last Updated: January 2026
+
+OVERVIEW
+--------
+Work permit rules depend on nationality and visa type.
+EU/EEA citizens have automatic work rights.
+Non-EU citizens need residence permit with work authorization.
+
+EU/EEA/SWISS CITIZENS
+---------------------
+Countries: All 27 EU countries + Iceland, Liechtenstein, Norway, Switzerland
+
+Work Rights:
+✓ NO work permit needed
+✓ Full freedom to work in Germany
+✓ Can start working immediately
+✓ Same rights as German citizens
+✓ No employer restrictions
+
+Only need:
+- Valid national ID or passport
+- Register residence (Anmeldung) within 2 weeks
+- Apply for EU Freizügigkeitsbescheinigung (optional)
+
+NON-EU CITIZENS - GENERAL RULES
+-------------------------------
+Must have residence permit (Aufenthaltstitel) that allows work.
+Check your permit - it should state:
+"Erwerbstätigkeit gestattet" (Employment permitted) or
+"Beschäftigung gestattet" (Work permitted)
+
+If permit says:
+"Erwerbstätigkeit nicht gestattet" - NO work allowed
+"Beschäftigung nur mit Genehmigung" - Work only with additional permit
+
+TYPES OF WORK-RELATED RESIDENCE PERMITS
+---------------------------------------
+
+1. EU BLUE CARD (Blaue Karte EU)
+   For highly qualified workers
+   Requirements:
+   - University degree (recognized)
+   - Job offer with minimum salary
+   - Salary 2025: €45,300/year (standard)
+   - Salary 2025: €41,041.80/year (shortage occupations)
+   
+   Shortage occupations include:
+   - IT and tech professionals
+   - Engineers
+   - Doctors
+   - Scientists
+   - Mathematicians
+   
+   Benefits:
+   - Fast track to permanent residence (21-33 months)
+   - Family can work immediately
+   - Can change employers easily
+   - Valid across EU after 18 months
+
+2. SKILLED WORKER VISA (Fachkräfteeinwanderung)
+   For qualified professionals
+   
+   a) Academic professionals (§18b AufenthG)
+      - Recognized university degree
+      - Related job offer
+      - No minimum salary for non-Blue Card
+   
+   b) Vocational training (§18a AufenthG)
+      - Recognized vocational qualification
+      - Related job offer
+      - 2+ years training equivalent
+
+3. OPPORTUNITY CARD (Chancenkarte) - NEW since June 2024
+   Points-based system for job seekers
+   
+   Points for:
+   - Qualifications
+   - Language skills (German/English)
+   - Age (under 35 preferred)
+   - Work experience
+   - Germany connection
+   
+   Minimum: 6 points needed
+   Duration: 12 months to find work
+   Can work 20 hours/week while searching
+
+4. JOB SEEKER VISA (§20 AufenthG)
+   For university graduates
+   - 6 months to find qualified employment
+   - Cannot work during job search (except trial work)
+   - Must prove financial means
+
+5. INTRA-COMPANY TRANSFER (ICT Card)
+   For employees transferred within same company
+   - 3+ years employment with company
+   - Manager, specialist, or trainee position
+   - Valid up to 3 years
+
+6. SELF-EMPLOYMENT VISA (§21 AufenthG)
+   For freelancers and entrepreneurs
+   Requirements:
+   - Business plan
+   - Proof of financing
+   - Economic interest for Germany
+   - Viable business concept
+
+7. RESEARCHER VISA (§18d AufenthG)
+   For scientific researchers
+   - Research agreement with German institution
+   - Doctorate or suitable qualification
+   - Can teach alongside research
+
+RECOGNITION OF QUALIFICATIONS
+-----------------------------
+
+University Degrees:
+- Check recognition: anabin.kmk.org
+- Categories: H+ (comparable), H+/- (partly), H- (not comparable)
+- If not H+: May need individual assessment
+
+Vocational Qualifications:
+- Recognition database: anerkennung-in-deutschland.de
+- Process can take 3-6 months
+- May require additional qualification
+
+Regulated Professions:
+Medical doctors, lawyers, teachers, engineers (in some states)
+MUST have recognition before practicing
+
+Recognition costs: €100-600 depending on profession
+
+EMPLOYER OBLIGATIONS
+--------------------
+
+Employers must:
+1. Check employee's work permit status
+2. Keep copy of residence permit
+3. Report to foreigner's office when contract ends
+4. Cannot employ people without work authorization
+   (Fine: Up to €500,000!)
+
+BUNDESAGENTUR FÜR ARBEIT APPROVAL
+---------------------------------
+Some work permits require BA approval.
+BA checks:
+- Labor market conditions
+- Comparable working conditions
+- Appropriate salary
+
+Positions NOT requiring BA approval:
+- EU Blue Card holders
+- University graduates in qualified positions
+- ICT Card holders
+- Researchers
+- Certain shortage occupations
+
+MINIMUM WAGE (MINDESTLOHN) 2025
+-------------------------------
+General minimum wage: €12.82/hour
+Applies to almost all workers regardless of nationality
+
+Exceptions:
+- Internships (certain types)
+- Long-term unemployed (first 6 months)
+- Some apprentices
+
+WORKING HOURS
+-------------
+Working Time Act (Arbeitszeitgesetz):
+- Maximum: 8 hours/day (can be 10 with compensation)
+- Maximum: 48 hours/week average
+- Rest periods: 11 hours between shifts
+- Breaks: 30 min after 6 hours, 45 min after 9 hours
+
+EMPLOYMENT CONTRACT (ARBEITSVERTRAG)
+------------------------------------
+German law requires written contract for:
+- Job description
+- Salary
+- Working hours
+- Holiday entitlement
+- Notice periods
+- Probationary period terms
+
+Minimum by law:
+- 20 vacation days (5-day week)
+- 24 vacation days (6-day week)
+- Many employers offer 25-30 days
+
+Notice periods (statutory minimums):
+- During Probezeit (trial): 2 weeks
+- After trial: 4 weeks to 15th or end of month
+- Increases with tenure
+
+TRIAL PERIOD (PROBEZEIT)
+------------------------
+- Maximum: 6 months
+- Shorter notice period: 2 weeks
+- Cannot extend beyond 6 months
+- No reason needed for termination during Probezeit
+
+MINI-JOB AND MIDI-JOB
+---------------------
+
+Mini-Job (Geringfügige Beschäftigung):
+- Maximum €538/month (2024)
+- Employer pays flat-rate social security
+- Employee: No social contributions (can opt-in for pension)
+- Limited work rights for some visa holders!
+
+Midi-Job (Übergangsbereich):
+- €538.01 - €2,000/month
+- Reduced employee contributions
+- Full social security coverage
+
+FREELANCE WORK (SELBSTSTÄNDIGKEIT)
+----------------------------------
+
+Freiberufler (Freelancer):
+Certain professions recognized as "free" professions:
+- Writers, artists, translators
+- IT consultants (often)
+- Doctors, lawyers, architects
+- Teachers, trainers
+
+Benefits:
+- No trade license needed
+- Simpler taxation
+- Can work for multiple clients
+
+Gewerbetreibender (Trader):
+All other self-employment
+- Need Gewerbeschein (trade license)
+- Register with Gewerbeamt
+- More regulations
+
+WORK PERMIT WHILE STUDYING
+--------------------------
+
+Students (§16b residence permit):
+- 140 full days OR 280 half days per year
+- No limit for university-related jobs
+- Must not delay studies
+
+After graduation:
+- 18 months to find qualified job
+- Can work any job during search
+- Must relate to studies once found
+
+USEFUL CONTACTS
+---------------
+- Federal Employment Agency: www.arbeitsagentur.de
+- Make it in Germany: www.make-it-in-germany.com
+- Recognition portal: www.anerkennung-in-deutschland.de
+- Anabin database: anabin.kmk.org
+- IQ Network (qualification support): www.netzwerk-iq.de

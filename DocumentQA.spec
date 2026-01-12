@@ -13,6 +13,14 @@ venv_path = Path('venv/Lib/site-packages')
 datas = [
     # Include data directory structure (but NOT models - too large ~1GB)
     ('data', 'data'),
+    # Include tax knowledge base (essential for tax agent)
+    ('tax_knowledge', 'tax_knowledge'),
+    # Include BürokratAI knowledge base (essential for immigration agent)
+    ('buerokratai_knowledge', 'buerokratai_knowledge'),
+    # Include e-commerce agent module
+    ('ecommerce_agent.py', '.'),
+    # Include BürokratAI agent module
+    ('buerokratai_agent.py', '.'),
     # Include license and readme
     ('LICENSE.txt', '.'),
     ('README.txt', '.'),
@@ -34,6 +42,14 @@ chromadb_datas, chromadb_binaries, _ = collect_all('chromadb')
 datas += chromadb_datas
 binaries += chromadb_binaries
 
+# Collect fake_useragent data files (browsers.jsonl)
+try:
+    fake_ua_datas = collect_data_files('fake_useragent')
+    datas += fake_ua_datas
+    print(f"Collected fake_useragent data files: {fake_ua_datas}")
+except Exception as e:
+    print(f"Warning: Could not collect fake_useragent data: {e}")
+
 # Check for llama_cpp DLLs
 llama_cpp_path = venv_path / 'llama_cpp'
 if llama_cpp_path.exists():
@@ -52,6 +68,19 @@ hiddenimports = [
     
     # PDF handling
     'PyPDF2',
+    
+    # E-commerce agent dependencies
+    'ecommerce_agent',
+    'bs4',
+    'beautifulsoup4',
+    'requests',
+    'lxml',
+    'html5lib',
+    'fake_useragent',
+    'diskcache',
+    
+    # BürokratAI agent
+    'buerokratai_agent',
     
     # Llama CPP - ALL submodules
     'llama_cpp',
@@ -192,6 +221,18 @@ hiddenimports = [
     'PIL',
     'PIL.Image',
     'PIL._imaging',
+    
+    # Web scraping & E-commerce
+    'aiohttp',
+    'lxml',
+    'lxml.html',
+    'lxml.etree',
+    'html5lib',
+    'selenium',
+    'selenium.webdriver',
+    'urllib.parse',
+    'hashlib',
+    'json',
 ]
 
 # Combine all hidden imports (static + dynamic)

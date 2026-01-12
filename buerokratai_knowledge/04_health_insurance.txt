@@ -1,0 +1,211 @@
+GERMAN HEALTH INSURANCE FOR IMMIGRANTS
+=======================================
+Source: GKV-Spitzenverband, BMG (Federal Ministry of Health)
+Last Updated: January 2026
+
+OVERVIEW
+--------
+Health insurance is MANDATORY in Germany (since 2009).
+All residents must have health insurance - no exceptions.
+This applies to everyone: employees, self-employed, students, and retirees.
+
+TWO TYPES OF HEALTH INSURANCE
+-----------------------------
+
+1. STATUTORY HEALTH INSURANCE (GKV - Gesetzliche Krankenversicherung)
+   Public/state system, non-profit, ~90% of population
+
+2. PRIVATE HEALTH INSURANCE (PKV - Private Krankenversicherung)
+   Private companies, for-profit, ~10% of population
+
+STATUTORY HEALTH INSURANCE (GKV)
+--------------------------------
+
+Who MUST have GKV:
+- Employees earning up to €69,300/year (2024 threshold)
+- Students at German universities
+- Unemployed receiving Arbeitslosengeld
+- Pensioners who were in GKV most of their working life
+
+Major GKV providers:
+- TK (Techniker Krankenkasse) - largest, good for English speakers
+- AOK (various regional) - widespread, traditional
+- BARMER - second largest
+- DAK-Gesundheit
+- IKK - for craftsmen originally
+- BKK (various company funds)
+- HEK
+- KKH
+
+All GKV providers offer SAME basic coverage (legally mandated)
+Differences: Additional services, customer service, bonus programs
+
+GKV CONTRIBUTION RATES 2024/2025
+--------------------------------
+Base contribution: 14.6% of gross salary
+Additional contribution: ~1.3-2.5% (varies by provider)
+Total: ~15.9-17.1% of gross salary
+
+Split: Employee pays ~half, employer pays ~half
+Employee contribution: ~7.95-8.55% of gross salary
+
+Monthly contribution ceiling:
+- Maximum contribution based on €5,175/month gross (2024)
+- Maximum employee share: ~€450/month
+
+GKV COVERAGE INCLUDES
+---------------------
+✓ Doctor visits (GP and specialists)
+✓ Hospital treatment
+✓ Prescription medications (with €5-10 co-pay)
+✓ Dental checkups (basic treatment)
+✓ Maternity care (100% covered)
+✓ Mental health treatment
+✓ Rehabilitation
+✓ Preventive care
+✓ Sick leave pay (Krankengeld) after 6 weeks
+✓ Vaccinations
+✓ Medical aids (glasses, hearing aids - partial)
+
+GKV DOES NOT COVER
+------------------
+✗ Single/private hospital rooms
+✗ Chief physician treatment
+✗ Some dental procedures (crowns, implants - partial coverage)
+✗ Alternative medicine (usually)
+✗ Cosmetic procedures
+✗ Glasses/contacts (only partially for children)
+
+PRIVATE HEALTH INSURANCE (PKV)
+------------------------------
+
+Who CAN choose PKV:
+- Employees earning above €69,300/year (Versicherungspflichtgrenze)
+- Self-employed and freelancers (any income)
+- Civil servants (Beamte)
+- Some students
+
+Who CANNOT join PKV:
+- Employees earning below €69,300/year
+- Unemployed receiving Arbeitslosengeld
+- Most retirees (if in GKV before)
+
+IMPORTANT: Switching from PKV back to GKV is very difficult after age 55!
+
+PKV CONTRIBUTION RATES
+----------------------
+Based on:
+- Age at entry
+- Health status (medical questionnaire)
+- Chosen coverage level
+- Deductibles
+
+Typical costs:
+- Young, healthy person: €200-400/month
+- Middle-aged: €400-700/month
+- Elderly: €600-1000+/month
+
+PKV ADVANTAGES
+--------------
+✓ Often faster appointments
+✓ Chief physician treatment
+✓ Private hospital rooms
+✓ Better dental coverage
+✓ More alternative medicine
+✓ Customizable coverage
+✓ Lower premiums when young
+
+PKV DISADVANTAGES
+-----------------
+✗ Premiums increase with age
+✗ No income-based pricing
+✗ Family members not free (each needs own policy)
+✗ Difficult to return to GKV
+✗ Must pay upfront, get reimbursed
+✗ Pre-existing conditions can mean exclusions or higher premiums
+
+HEALTH INSURANCE FOR SPECIFIC GROUPS
+------------------------------------
+
+1. EMPLOYEES
+   - Automatically enrolled in GKV through employer
+   - Can opt for PKV if earning above threshold
+   - Employer handles registration and contributions
+
+2. STUDENTS
+   - Student GKV rate: ~€120/month (including nursing care)
+   - Must be under 30 years old
+   - Must be enrolled at recognized university
+   - Over 30: Can get voluntary GKV or private
+   - EU students: EHIC may work, but limited
+
+3. BLUE CARD HOLDERS
+   - Must have health insurance for application
+   - GKV or PKV acceptable
+   - Family covered under GKV
+
+4. SELF-EMPLOYED/FREELANCERS
+   - Can choose GKV (voluntary) or PKV
+   - GKV voluntary: Minimum ~€200/month
+   - No employer contribution - pay full amount yourself
+
+5. JOB SEEKERS (with visa)
+   - Must prove health insurance for visa
+   - Travel insurance NOT sufficient for long-term visa
+   - Need incoming insurance or private health insurance
+
+EHIC - EUROPEAN HEALTH INSURANCE CARD
+-------------------------------------
+For EU/EEA/Swiss citizens:
+- Valid for temporary stays
+- NOT valid for moving to Germany permanently
+- NOT valid for planned medical treatment
+- Must get German insurance when becoming resident
+
+TRAVEL/INCOMING INSURANCE
+-------------------------
+For visa applications:
+- Minimum coverage: €30,000
+- Valid for Schengen visa applications
+- NOT valid for residence permits
+- NOT valid for Blue Card
+
+Popular incoming insurance:
+- Mawista
+- Care Concept
+- HanseMerkur
+- Usually €30-100/month
+
+HOW TO GET HEALTH INSURANCE
+---------------------------
+
+For employed workers:
+1. Employer provides registration form
+2. Choose GKV provider
+3. Employer handles paperwork
+4. Insurance starts from day 1 of employment
+
+For students:
+1. Apply at GKV provider (TK, AOK, etc.)
+2. Need: Enrollment certificate, passport, Anmeldung
+3. Get Versicherungsbescheinigung for university
+4. Takes 1-2 weeks
+
+For freelancers/self-employed:
+1. Contact GKV provider directly
+2. Or choose PKV provider
+3. Provide: Business registration, tax number, passport
+
+IMPORTANT DEADLINES
+-------------------
+- Must have insurance from day 1 in Germany
+- Retroactive coverage: If you register late, you may owe back premiums
+- Employment: Automatically covered from start date
+- Students: Must prove insurance for enrollment
+
+CONTACTS
+--------
+- TK: www.tk.de/en
+- AOK: www.aok.de
+- BARMER: www.barmer.de
+- Compare plans: www.krankenkassen.de

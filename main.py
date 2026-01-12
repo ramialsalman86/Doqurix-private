@@ -24,6 +24,627 @@ import time
 import hashlib
 import json
 from datetime import datetime, timedelta
+try:
+    from docx import Document
+    from docx.oxml.table import CT_Tbl
+    from docx.oxml.text.paragraph import CT_P
+    from docx.table import _Cell, Table
+    from docx.text.paragraph import Paragraph
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+    print("Warning: python-docx not installed. Word document support disabled.")
+
+
+# ============================================================================
+# AGENTIC WORKFLOWS SYSTEM - LOCAL & CPU-ONLY
+# ============================================================================
+
+class AgentWorkflows:
+    """
+    Lightweight AI agents for automating multi-document tasks.
+    Privacy-first, local-only processing without external dependencies.
+    """
+    
+    def __init__(self, llm, embedder, reranker):
+        self.llm = llm
+        self.embedder = embedder
+        self.reranker = reranker
+        self.document_cache = {}  # Cache for document metadata
+        self.language_cache = {}  # Cache for detected languages
+        
+    def auto_triage_documents(self, documents, query):
+        """
+        Automatically triage documents based on relevance and content type.
+        Returns prioritized list with confidence scores.
+        """
+        if not documents:
+            return []
+            
+        # Quick semantic relevance scoring
+        query_embedding = self.embedder.encode(query)
+        scored_docs = []
+        
+        for doc in documents:
+            doc_text = doc.get('content', '')[:1000]  # First 1000 chars for efficiency
+            doc_embedding = self.embedder.encode(doc_text)
+            
+            # Calculate semantic similarity
+            similarity = np.dot(query_embedding, doc_embedding) / (
+                np.linalg.norm(query_embedding) * np.linalg.norm(doc_embedding)
+            )
+            
+            # Document type detection (technical, legal, financial, etc.)
+            doc_type = self._detect_document_type(doc_text)
+            
+            # Content density scoring
+            density_score = self._calculate_content_density(doc_text)
+            
+            # Combined triage score
+            triage_score = similarity * 0.6 + density_score * 0.4
+            
+            scored_docs.append({
+                'document': doc,
+                'relevance_score': float(similarity),
+                'content_density': float(density_score),
+                'document_type': doc_type,
+                'triage_score': float(triage_score),
+                'priority': 'high' if triage_score > 0.7 else 'medium' if triage_score > 0.4 else 'low'
+            })
+        
+        # Sort by triage score
+        return sorted(scored_docs, key=lambda x: x['triage_score'], reverse=True)
+    
+    def citation_aware_refinement(self, answer, source_contexts):
+        """
+        Refine answers with accurate citations and cross-references.
+        Local-only citation validation and enhancement.
+        """
+        if not source_contexts:
+            return answer
+            
+        # Extract existing citations from answer
+        citation_pattern = r'\[(\d+)\]'
+        citations = re.findall(citation_pattern, answer)
+        
+        # Build citation map
+        citation_map = {}
+        for i, ctx in enumerate(source_contexts, 1):
+            source_name = ctx.get('metadata', {}).get('source', f'Source {i}')
+            page = ctx.get('metadata', {}).get('page', 'Unknown')
+            citation_map[str(i)] = {
+                'source': source_name,
+                'page': page,
+                'content_snippet': ctx.get('doc', '')[:200] + '...'
+            }
+        
+        # Enhance answer with citation details
+        enhanced_answer = answer
+        
+        # Add citation validation prompt
+        validation_prompt = f"""<|im_start|>system
+You are a citation validator. Review the answer and ensure all claims are properly supported by the provided sources.
+Add [VERIFY] tags to unsupported claims.<|im_end|>
+<|im_start|>user
+Answer: {answer}
+
+Sources available: {len(source_contexts)}
+Validate citations and mark unsupported claims.<|im_end|>
+<|im_start|>assistant
+"""
+        
+        try:
+            validation_result = self.llm(
+                validation_prompt,
+                max_tokens=300,
+                temperature=0.3,
+                stop=["<|im_end|>", "<|im_start|>"]
+            )
+            
+            validated_answer = validation_result['choices'][0]['text'].strip()
+            
+            # Use validated version if it's more accurate
+            if '[VERIFY]' not in validated_answer and len(validated_answer) > len(answer) * 0.8:
+                enhanced_answer = validated_answer
+                
+        except Exception:
+            pass  # Fall back to original answer
+        
+        return {
+            'refined_answer': enhanced_answer,
+            'citation_map': citation_map,
+            'validation_status': 'validated' if '[VERIFY]' not in enhanced_answer else 'needs_review'
+        }
+    
+    def cross_language_retrieval(self, query, documents):
+        """
+        Intelligent cross-language document retrieval.
+        Detects query language and searches across multilingual content.
+        """
+        # Detect query language
+        query_lang = self._detect_language(query)
+        
+        # Group documents by language
+        lang_groups = {}
+        for doc in documents:
+            content = doc.get('content', '')
+            doc_lang = self._detect_language(content[:500])
+            
+            if doc_lang not in lang_groups:
+                lang_groups[doc_lang] = []
+            lang_groups[doc_lang].append(doc)
+        
+        # Multi-language search strategy
+        results = []
+        
+        # 1. Direct language match (highest priority)
+        if query_lang in lang_groups:
+            direct_matches = self._semantic_search(query, lang_groups[query_lang])
+            for match in direct_matches:
+                match['language_match'] = 'direct'
+                match['priority_score'] = match.get('score', 0) * 1.2
+            results.extend(direct_matches)
+        
+        # 2. English fallback (medium priority)
+        if 'english' in lang_groups and query_lang != 'english':
+            english_matches = self._semantic_search(query, lang_groups['english'])
+            for match in english_matches:
+                match['language_match'] = 'english_fallback'
+                match['priority_score'] = match.get('score', 0) * 1.0
+            results.extend(english_matches[:3])  # Limit fallback results
+        
+        # 3. Cross-language semantic search (lower priority)
+        other_langs = [lang for lang in lang_groups.keys() 
+                      if lang not in [query_lang, 'english']]
+        
+        for lang in other_langs:
+            if len(results) < 10:  # Limit total results
+                cross_matches = self._semantic_search(query, lang_groups[lang])
+                for match in cross_matches[:2]:  # Limited cross-language matches
+                    match['language_match'] = f'cross_{lang}'
+                    match['priority_score'] = match.get('score', 0) * 0.8
+                results.extend(cross_matches[:2])
+        
+        # Sort by priority score
+        return sorted(results, key=lambda x: x.get('priority_score', 0), reverse=True)
+    
+    def generate_followup_questions(self, query, answer, source_contexts):
+        """
+        Generate intelligent follow-up questions based on the conversation context.
+        Identifies information gaps and suggests deeper exploration paths.
+        """
+        # Analyze the current answer for potential follow-ups
+        context_summary = self._summarize_contexts(source_contexts)
+        
+        followup_prompt = f"""<|im_start|>system
+You are an intelligent research assistant. Based on the user's question and the answer provided, generate 3-4 insightful follow-up questions that would help the user explore the topic deeper. Focus on:
+1. Clarifying ambiguous points
+2. Exploring related concepts
+3. Identifying practical applications
+4. Uncovering additional insights from the documents
+
+Be concise and specific.<|im_end|>
+<|im_start|>user
+Original Question: {query}
+
+Answer: {answer}
+
+Available Context: {context_summary}
+
+Generate follow-up questions:<|im_end|>
+<|im_start|>assistant
+"""
+        
+        try:
+            result = self.llm(
+                followup_prompt,
+                max_tokens=200,
+                temperature=0.7,
+                stop=["<|im_end|>", "<|im_start|>"]
+            )
+            
+            followup_text = result['choices'][0]['text'].strip()
+            
+            # Parse questions from the response
+            questions = []
+            lines = followup_text.split('\n')
+            
+            for line in lines:
+                line = line.strip()
+                if line and ('?' in line):
+                    # Clean up question formatting
+                    question = re.sub(r'^\d+[\.\)]\s*', '', line)  # Remove numbering
+                    question = question.strip()
+                    if question:
+                        questions.append(question)
+            
+            return questions[:4]  # Limit to 4 questions
+            
+        except Exception:
+            # Fallback: rule-based question generation
+            return self._generate_fallback_questions(query, answer)
+    
+    def auto_document_insights(self, documents):
+        """
+        Automatically extract key insights and themes from document collection.
+        Provides intelligent, Claude/ChatGPT-style overview using LLM.
+        """
+        if not documents:
+            return {'themes': [], 'key_entities': [], 'summary': '', 'intelligent_summary': ''}
+        
+        # Sample documents for analysis (use first 5 for comprehensive analysis)
+        sample_docs = documents[:5] if len(documents) > 5 else documents
+        
+        # Build representative text from samples
+        sample_texts = []
+        for doc in sample_docs:
+            content = doc.get('content', '')
+            # Take meaningful chunks (beginning and key sections)
+            if len(content) > 2000:
+                # Take beginning, middle, and end for better representation
+                chunk1 = content[:700]
+                chunk2 = content[len(content)//2:len(content)//2 + 600]
+                chunk3 = content[-700:]
+                combined = f"{chunk1}... {chunk2}... {chunk3}"
+                sample_texts.append(combined)
+            else:
+                sample_texts.append(content)
+        
+        combined_sample = "\n\n---\n\n".join(sample_texts)
+        
+        # Use LLM for intelligent analysis
+        analysis_prompt = f"""<|im_start|>system
+You are an expert document analyst. Analyze the provided document collection and create a comprehensive, professional summary that identifies:
+1. Main topics and themes
+2. Document type and purpose (legal, technical, financial, etc.)
+3. Key stakeholders, parties, or entities mentioned
+4. Critical dates, deadlines, or timelines
+5. Important obligations, requirements, or actions
+6. Risk factors or notable clauses
+7. Overall significance and context
+
+Be specific, actionable, and professional. Format the response clearly.<|im_end|>
+<|im_start|>user
+Analyze this document collection ({len(documents)} document chunks total, analyzing representative samples):
+
+{combined_sample[:8000]}
+
+Provide a comprehensive analysis in a clear, professional format.<|im_end|>
+<|im_start|>assistant
+"""
+        
+        try:
+            # Generate intelligent analysis using LLM
+            result = self.llm(
+                analysis_prompt,
+                max_tokens=800,
+                temperature=0.3,  # Lower temperature for factual analysis
+                stop=["<|im_end|>", "<|im_start|>"],
+                top_p=0.9
+            )
+            
+            intelligent_summary = result['choices'][0]['text'].strip()
+            
+            # Also extract structured data for backward compatibility
+            themes = self._extract_themes_llm(combined_sample[:3000])
+            entities = self._extract_entities_enhanced(combined_sample[:3000])
+            
+            return {
+                'intelligent_summary': intelligent_summary,
+                'themes': themes,
+                'key_entities': entities,
+                'document_count': len(documents),
+                'analysis_timestamp': datetime.now().isoformat(),
+                'analyzed_samples': len(sample_docs)
+            }
+            
+        except Exception as e:
+            # Fallback to basic analysis if LLM fails
+            themes = self._extract_themes(sample_docs)
+            entities = self._extract_entities(sample_docs)
+            summary = self._generate_collection_summary(sample_docs, themes)
+            
+            return {
+                'intelligent_summary': f"Basic analysis mode:\n\n{summary}\n\nNote: Advanced AI analysis unavailable.",
+                'themes': themes,
+                'key_entities': entities,
+                'document_count': len(documents),
+                'analysis_timestamp': datetime.now().isoformat()
+            }
+    
+    def _extract_themes_llm(self, text):
+        """Extract themes using LLM for better understanding"""
+        try:
+            theme_prompt = f"""<|im_start|>system
+Extract 5-7 main themes or topics from this text. Be specific and use full phrases, not single words.<|im_end|>
+<|im_start|>user
+Text: {text[:2000]}
+
+List the main themes:<|im_end|>
+<|im_start|>assistant
+"""
+            
+            result = self.llm(
+                theme_prompt,
+                max_tokens=150,
+                temperature=0.3,
+                stop=["<|im_end|>"]
+            )
+            
+            theme_text = result['choices'][0]['text'].strip()
+            
+            # Parse themes from response
+            themes = []
+            lines = theme_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line and len(line) > 5:
+                    # Remove numbering and bullets
+                    clean_line = re.sub(r'^[\d\.\-\*\•]+\s*', '', line)
+                    if clean_line and len(clean_line.split()) >= 2:  # At least 2 words
+                        themes.append({
+                            'term': clean_line[:80],  # Limit length
+                            'relevance': 1.0
+                        })
+            
+            return themes[:7]
+            
+        except:
+            return self._extract_themes([{'content': text}])
+    
+    def _extract_entities_enhanced(self, text):
+        """Enhanced entity extraction with better patterns"""
+        entities = []
+        
+        # Enhanced patterns for better extraction
+        patterns = {
+            'parties': r'\b(?:Party|Parties|Company|Corporation|LLC|Ltd|Inc|GmbH|AG)\b[^.]{0,100}',
+            'dates': r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b|\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
+            'monetary': r'\$\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})?(?:\s*(?:million|billion|thousand|USD|EUR|GBP))?',
+            'percentages': r'\b\d{1,3}(?:\.\d{1,2})?\s*%',
+            'obligations': r'\b(?:shall|must|required to|obligated to|agree to)\b[^.]{0,100}',
+            'deadlines': r'\b(?:within|by|before|after|no later than)\s+\d+\s+(?:days|weeks|months|years)\b'
+        }
+        
+        for entity_type, pattern in patterns.items():
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                # Clean and deduplicate
+                cleaned = list(set([m.strip()[:100] for m in matches]))
+                if cleaned:
+                    entities.append({
+                        'type': entity_type.replace('_', ' ').title(),
+                        'items': cleaned[:5]  # Limit to 5 examples
+                    })
+        
+        return entities
+    
+    # Helper methods
+    def _detect_document_type(self, text):
+        """Detect document type based on content patterns"""
+        text_lower = text.lower()
+        
+        # Technical document indicators
+        if any(word in text_lower for word in ['algorithm', 'implementation', 'system', 'technical', 'specification']):
+            return 'technical'
+        
+        # Legal document indicators
+        if any(word in text_lower for word in ['shall', 'hereby', 'whereas', 'agreement', 'contract', 'legal']):
+            return 'legal'
+        
+        # Financial document indicators
+        if any(word in text_lower for word in ['financial', 'revenue', 'budget', 'cost', 'investment', 'profit']):
+            return 'financial'
+        
+        # Research document indicators
+        if any(word in text_lower for word in ['research', 'study', 'analysis', 'findings', 'methodology']):
+            return 'research'
+        
+        return 'general'
+    
+    def _calculate_content_density(self, text):
+        """Calculate content density score (information richness)"""
+        if not text:
+            return 0.0
+        
+        # Metrics: sentence length variety, vocabulary richness, technical terms
+        sentences = re.split(r'[.!?]+', text)
+        if not sentences:
+            return 0.0
+        
+        # Sentence length variance (more varied = higher density)
+        lengths = [len(s.split()) for s in sentences if s.strip()]
+        if not lengths:
+            return 0.0
+        
+        avg_length = sum(lengths) / len(lengths)
+        length_variance = sum((l - avg_length) ** 2 for l in lengths) / len(lengths)
+        
+        # Unique word ratio
+        words = text.lower().split()
+        unique_ratio = len(set(words)) / len(words) if words else 0
+        
+        # Technical term density
+        technical_terms = len(re.findall(r'\b[A-Z]{2,}\b|\b\w+[_-]\w+\b', text))
+        technical_density = min(technical_terms / len(words) if words else 0, 1.0)
+        
+        # Combined density score
+        density = (
+            min(length_variance / 100, 1.0) * 0.3 +
+            unique_ratio * 0.4 +
+            technical_density * 0.3
+        )
+        
+        return min(density, 1.0)
+    
+    def _detect_language(self, text):
+        """Simple language detection based on character patterns"""
+        if not text:
+            return 'unknown'
+        
+        # Cache for performance
+        text_hash = hash(text[:200])
+        if text_hash in self.language_cache:
+            return self.language_cache[text_hash]
+        
+        sample = text[:500].lower()
+        
+        # Character-based detection
+        arabic_chars = sum(1 for c in sample if '\u0600' <= c <= '\u06FF')
+        cyrillic_chars = sum(1 for c in sample if '\u0400' <= c <= '\u04FF')
+        cjk_chars = sum(1 for c in sample if '\u4e00' <= c <= '\u9fff')
+        german_chars = sum(1 for c in sample if c in 'äöüß')
+        
+        total_chars = len(sample)
+        if total_chars == 0:
+            return 'unknown'
+        
+        # Language determination
+        if arabic_chars / total_chars > 0.1:
+            lang = 'arabic'
+        elif cyrillic_chars / total_chars > 0.1:
+            lang = 'russian'
+        elif cjk_chars / total_chars > 0.1:
+            lang = 'chinese'
+        elif german_chars > 0:
+            lang = 'german'
+        else:
+            lang = 'english'
+        
+        self.language_cache[text_hash] = lang
+        return lang
+    
+    def _semantic_search(self, query, documents):
+        """Lightweight semantic search within document subset"""
+        if not documents:
+            return []
+        
+        query_embedding = self.embedder.encode(query)
+        results = []
+        
+        for doc in documents:
+            content = doc.get('content', '')
+            if len(content) > 1000:
+                content = content[:1000]  # Truncate for efficiency
+            
+            doc_embedding = self.embedder.encode(content)
+            similarity = np.dot(query_embedding, doc_embedding) / (
+                np.linalg.norm(query_embedding) * np.linalg.norm(doc_embedding)
+            )
+            
+            results.append({
+                'document': doc,
+                'score': float(similarity),
+                'content': content
+            })
+        
+        return sorted(results, key=lambda x: x['score'], reverse=True)
+    
+    def _summarize_contexts(self, contexts):
+        """Create brief summary of available contexts"""
+        if not contexts:
+            return "No context available"
+        
+        sources = []
+        total_length = 0
+        
+        for ctx in contexts:
+            source = ctx.get('metadata', {}).get('source', 'Unknown')
+            content_preview = ctx.get('doc', '')[:100]
+            sources.append(f"{source}: {content_preview}...")
+            total_length += len(ctx.get('doc', ''))
+        
+        return f"Available sources ({len(contexts)}): {'; '.join(sources[:3])}"
+    
+    def _generate_fallback_questions(self, query, answer):
+        """Generate fallback questions using rule-based approach"""
+        questions = []
+        
+        # Question patterns based on query type
+        if 'what' in query.lower():
+            questions.append(f"How does this relate to other aspects of the topic?")
+            questions.append(f"What are the practical implications of this?")
+        
+        if 'how' in query.lower():
+            questions.append(f"What are the potential challenges with this approach?")
+            questions.append(f"Are there alternative methods to consider?")
+        
+        if 'why' in query.lower():
+            questions.append(f"What evidence supports this explanation?")
+            questions.append(f"How might this impact other related areas?")
+        
+        # Generic follow-ups
+        questions.extend([
+            "Can you provide more specific examples?",
+            "What additional details are available in the documents?",
+            "How does this compare to industry standards or best practices?"
+        ])
+        
+        return questions[:4]
+    
+    def _extract_themes(self, documents):
+        """Extract key themes using lightweight text analysis"""
+        if not documents:
+            return []
+        
+        # Combine all document texts
+        all_text = " ".join([doc.get('content', '')[:500] for doc in documents])
+        
+        # Simple keyword extraction based on frequency and uniqueness
+        words = re.findall(r'\b[a-zA-Z]{4,}\b', all_text.lower())
+        word_freq = {}
+        
+        for word in words:
+            word_freq[word] = word_freq.get(word, 0) + 1
+        
+        # Filter out common words and get themes
+        common_words = {'this', 'that', 'with', 'have', 'they', 'will', 'from', 'been', 'each', 'more', 'some'}
+        
+        themes = []
+        for word, freq in sorted(word_freq.items(), key=lambda x: x[1], reverse=True):
+            if word not in common_words and freq > 2 and len(themes) < 10:
+                themes.append({
+                    'term': word.title(),
+                    'frequency': freq,
+                    'relevance': min(freq / len(documents), 1.0)
+                })
+        
+        return themes
+    
+    def _extract_entities(self, documents):
+        """Extract key entities using pattern matching"""
+        entities = []
+        all_text = " ".join([doc.get('content', '')[:1000] for doc in documents])
+        
+        # Pattern-based entity extraction
+        patterns = {
+            'organizations': r'\b[A-Z][a-z]+ (?:Inc|Corp|LLC|Ltd|Company|Organization)\b',
+            'dates': r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}\b',
+            'numbers': r'\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(?:%|percent|dollars?|euros?)\b',
+            'codes': r'\b[A-Z]{2,5}[-_]?\d{2,6}\b'
+        }
+        
+        for entity_type, pattern in patterns.items():
+            matches = re.findall(pattern, all_text)
+            if matches:
+                entities.append({
+                    'type': entity_type,
+                    'items': list(set(matches[:10]))  # Limit and dedupe
+                })
+        
+        return entities
+    
+    def _generate_collection_summary(self, documents, themes):
+        """Generate a brief summary of the document collection"""
+        doc_count = len(documents)
+        
+        if not themes:
+            return f"Collection of {doc_count} documents covering various topics."
+        
+        top_themes = [theme['term'] for theme in themes[:3]]
+        theme_text = ", ".join(top_themes)
+        
+        return f"Collection of {doc_count} documents primarily covering: {theme_text}. Key themes identified through content analysis."
 
 
 # ============================================================================
@@ -589,6 +1210,7 @@ class DocumentQAApp:
             self.init_embeddings()
             self.init_reranker()
             self.init_vector_db()
+            self.init_agent_workflows()
             
             self.root.after(0, self.close_progress_window)
             self.models_loaded = True
@@ -596,6 +1218,7 @@ class DocumentQAApp:
             self.root.after(0, lambda: self.ask_btn.config(state='normal'))
             self.root.after(0, lambda: self.upload_btn.config(state='normal'))
             self.root.after(0, lambda: self.summary_btn.config(state='normal'))
+            self.root.after(0, lambda: self.insights_btn.config(state='normal'))
             # Enable delete button only if there are documents
             if self.doc_listbox.size() > 0:
                 self.root.after(0, lambda: self.delete_btn.config(state='normal'))
@@ -744,6 +1367,444 @@ class DocumentQAApp:
             tokenized_corpus = [doc.lower().split() for doc in self.bm25_corpus]
             self.bm25 = BM25Okapi(tokenized_corpus)
     
+    def init_agent_workflows(self):
+        """Initialize intelligent agent workflows"""
+        self.update_status("🤖 Initializing AI agents...")
+        
+        if self.progress_window:
+            self.root.after(0, lambda: self.progress_window.set_title("🤖 Setting up AI Agents"))
+            self.root.after(0, lambda: self.progress_window.set_status("Configuring intelligent workflows..."))
+        
+        # Initialize agent system with loaded models
+        self.agents = AgentWorkflows(
+            llm=self.llm,
+            embedder=self.embedder,
+            reranker=self.reranker
+        )
+        
+        # Initialize specialized agent collections
+        self.init_tax_agent_collection()
+        self.init_buerokratai_collection()
+        
+        self.update_status("✓ AI agents ready for automation")
+    
+    def init_tax_agent_collection(self):
+        """Initialize German Tax Agent collection with pre-loaded knowledge"""
+        try:
+            # Check if tax collection already exists
+            try:
+                self.tax_collection = self.chroma_client.get_collection("tax_agent_germany")
+                doc_count = len(self.tax_collection.get()['documents'])
+                if doc_count > 0:
+                    self.update_status(f"✓ Tax Agent ready ({doc_count} knowledge chunks)")
+                    return
+            except:
+                # Create new collection
+                self.tax_collection = self.chroma_client.create_collection("tax_agent_germany")
+            
+            # Load tax knowledge documents
+            tax_knowledge_dir = self.app_dir / "tax_knowledge"
+            if not tax_knowledge_dir.exists():
+                self.update_status("⚠ Tax knowledge not found, agent will have limited capability")
+                return
+            
+            self.update_status("📚 Loading German Tax Agent knowledge base...")
+            
+            # Process each tax knowledge file
+            all_chunks = []
+            all_ids = []
+            all_metadatas = []
+            chunk_id = 0
+            
+            for tax_file in tax_knowledge_dir.glob("*.txt"):
+                with open(tax_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Split into chunks (approximately 500 words each for better context)
+                words = content.split()
+                chunk_size = 500
+                overlap = 50
+                
+                for i in range(0, len(words), chunk_size - overlap):
+                    chunk_words = words[i:i + chunk_size]
+                    chunk_text = ' '.join(chunk_words)
+                    
+                    if len(chunk_text.strip()) > 100:  # Skip very small chunks
+                        all_chunks.append(chunk_text)
+                        all_ids.append(f"tax_{chunk_id}")
+                        all_metadatas.append({
+                            'source': tax_file.name,
+                            'type': 'tax_knowledge',
+                            'agent': 'tax_germany'
+                        })
+                        chunk_id += 1
+            
+            if all_chunks:
+                # Embed and store in batches
+                batch_size = 100
+                for i in range(0, len(all_chunks), batch_size):
+                    batch_chunks = all_chunks[i:i+batch_size]
+                    batch_ids = all_ids[i:i+batch_size]
+                    batch_metadatas = all_metadatas[i:i+batch_size]
+                    
+                    # Generate embeddings
+                    embeddings = self.embedder.encode(batch_chunks).tolist()
+                    
+                    # Add to collection
+                    self.tax_collection.add(
+                        documents=batch_chunks,
+                        embeddings=embeddings,
+                        metadatas=batch_metadatas,
+                        ids=batch_ids
+                    )
+                
+                self.update_status(f"✓ Tax Agent loaded with {len(all_chunks)} knowledge chunks")
+            else:
+                self.update_status("⚠ No tax knowledge loaded")
+                
+        except Exception as e:
+            self.update_status(f"⚠ Tax Agent initialization failed: {str(e)}")
+            print(f"Tax agent error: {e}")
+    
+    def init_buerokratai_collection(self):
+        """Initialize BürokratAI Agent collection with pre-loaded immigration knowledge"""
+        try:
+            # Check if BürokratAI collection already exists
+            try:
+                self.buerokratai_collection = self.chroma_client.get_collection("buerokratai_agent")
+                doc_count = len(self.buerokratai_collection.get()['documents'])
+                if doc_count > 0:
+                    self.update_status(f"✓ BürokratAI Agent ready ({doc_count} knowledge chunks)")
+                    return
+            except:
+                # Create new collection
+                self.buerokratai_collection = self.chroma_client.create_collection("buerokratai_agent")
+            
+            # Load BürokratAI knowledge documents
+            buerokratai_knowledge_dir = self.app_dir / "buerokratai_knowledge"
+            if not buerokratai_knowledge_dir.exists():
+                self.update_status("⚠ BürokratAI knowledge not found, agent will have limited capability")
+                return
+            
+            self.update_status("📚 Loading BürokratAI immigration knowledge base...")
+            
+            # Process each knowledge file
+            all_chunks = []
+            all_ids = []
+            all_metadatas = []
+            chunk_id = 0
+            
+            for knowledge_file in buerokratai_knowledge_dir.glob("*.txt"):
+                with open(knowledge_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Split into chunks (approximately 500 words each for better context)
+                words = content.split()
+                chunk_size = 500
+                overlap = 50
+                
+                for i in range(0, len(words), chunk_size - overlap):
+                    chunk_words = words[i:i + chunk_size]
+                    chunk_text = ' '.join(chunk_words)
+                    
+                    if len(chunk_text.strip()) > 100:  # Skip very small chunks
+                        all_chunks.append(chunk_text)
+                        all_ids.append(f"buerokratai_{chunk_id}")
+                        all_metadatas.append({
+                            'source': knowledge_file.name,
+                            'type': 'immigration_knowledge',
+                            'agent': 'buerokratai_germany'
+                        })
+                        chunk_id += 1
+            
+            if all_chunks:
+                # Embed and store in batches
+                batch_size = 100
+                for i in range(0, len(all_chunks), batch_size):
+                    batch_chunks = all_chunks[i:i+batch_size]
+                    batch_ids = all_ids[i:i+batch_size]
+                    batch_metadatas = all_metadatas[i:i+batch_size]
+                    
+                    # Generate embeddings
+                    embeddings = self.embedder.encode(batch_chunks).tolist()
+                    
+                    # Add to collection
+                    self.buerokratai_collection.add(
+                        documents=batch_chunks,
+                        embeddings=embeddings,
+                        metadatas=batch_metadatas,
+                        ids=batch_ids
+                    )
+                
+                self.update_status(f"✓ BürokratAI Agent loaded with {len(all_chunks)} knowledge chunks")
+            else:
+                self.update_status("⚠ No BürokratAI knowledge loaded")
+                
+        except Exception as e:
+            self.update_status(f"⚠ BürokratAI Agent initialization failed: {str(e)}")
+            print(f"BürokratAI agent error: {e}")
+    
+    def on_agent_change(self, event=None):
+        """Handle agent selection change"""
+        # Map display names to internal values
+        display_to_internal = {
+            "None": "none",
+            "Insights": "insights",
+            "Tax Germany": "tax_germany",
+            "E-Commerce Germany": "ecommerce_germany",
+            "BürokratAI": "buerokratai_germany"
+        }
+        
+        agent_display = self.agent_mode.get()
+        agent = display_to_internal.get(agent_display, "none")
+        
+        # Update info label based on selection
+        agent_descriptions = {
+            "none": "None - Use your uploaded documents",
+            "insights": "Insights Agent - Automatic document analysis and insights",
+            "tax_germany": "German Tax Agent - Expert knowledge on German taxation (No PDF upload needed)",
+            "ecommerce_germany": "E-Commerce Agent - Product search & price comparison for German market (No PDF upload needed)",
+            "buerokratai_germany": "BürokratAI - Immigration & bureaucracy assistant for Germany (No PDF upload needed)"
+        }
+        
+        description = agent_descriptions.get(agent, "Unknown agent")
+        self.agent_info.config(text=description)
+        
+        # Update UI based on agent
+        if agent == "buerokratai_germany":
+            # BürokratAI doesn't need document upload
+            self.update_status("✓ BürokratAI Agent selected - Ask about German bureaucracy!")
+            self.answer_text.delete('1.0', 'end')
+            self.answer_text.insert('1.0', 
+                "🏛️ BürokratAI - Immigration Assistant Activated\n\n"
+                "I help immigrants navigate German bureaucracy. I have knowledge about:\n\n"
+                "📋 Registration & Documents:\n"
+                "• Anmeldung (Address Registration)\n"
+                "• Tax ID (Steuer-ID) Application\n"
+                "• Health Insurance Requirements\n\n"
+                "🛂 Visas & Residence Permits:\n"
+                "• EU Blue Card\n"
+                "• Student Visa\n"
+                "• Job Seeker Visa\n"
+                "• Family Reunification\n"
+                "• Opportunity Card (Chancenkarte)\n\n"
+                "🏠 Living in Germany:\n"
+                "• Renting an Apartment\n"
+                "• Opening a Bank Account\n"
+                "• Driver's License Conversion\n"
+                "• Integration Course\n\n"
+                "💼 Work & Career:\n"
+                "• Work Permits\n"
+                "• Recognition of Qualifications\n"
+                "• Permanent Residence Path\n\n"
+                "Ask me anything! For example:\n"
+                "- 'What documents do I need for Anmeldung?'\n"
+                "- 'How do I get a Tax ID?'\n"
+                "- 'What are the requirements for EU Blue Card?'\n"
+                "- 'How can I convert my driver's license?'\n\n"
+                "⚠️ Note: Information is based on official German sources.\n"
+                "Always verify with authorities for current regulations."
+            )
+        elif agent == "tax_germany":
+            # Tax agent doesn't need document upload
+            self.update_status("✓ German Tax Agent selected - Ask tax questions directly!")
+            self.answer_text.delete('1.0', 'end')
+            self.answer_text.insert('1.0', 
+                "🇩🇪 German Tax Agent Activated\n\n"
+                "I'm your expert on German taxation. I have comprehensive knowledge about:\n\n"
+                "• Income Tax (Einkommensteuer)\n"
+                "• Value Added Tax (Umsatzsteuer/VAT)\n"
+                "• Corporate Tax (Körperschaftsteuer)\n"
+                "• Trade Tax (Gewerbesteuer)\n"
+                "• Church Tax (Kirchensteuer)\n"
+                "• Capital Gains Tax (Abgeltungsteuer)\n"
+                "• Real Estate Transfer Tax (Grunderwerbsteuer)\n"
+                "• Inheritance & Gift Tax\n"
+                "• Social Security Contributions\n"
+                "• Tax Classes, Deductions, Filing Requirements\n\n"
+                "Ask me anything about German taxes! For example:\n"
+                "- 'What are the income tax brackets for 2025?'\n"
+                "- 'How does the Kleinunternehmerregelung work?'\n"
+                "- 'What can I deduct as a home office?'\n"
+                "- 'Explain trade tax calculation'\n"
+                "- 'What is the solidarity surcharge?'\n\n"
+                "No document upload needed - I have pre-loaded expert knowledge!"
+            )
+        elif agent == "ecommerce_germany":
+            # E-commerce agent for product search
+            self.update_status("✓ E-Commerce Agent selected - Search for products!")
+            self.answer_text.delete('1.0', 'end')
+            self.answer_text.insert('1.0',
+                "🛒 E-Commerce Agent Activated (German Market)\n\n"
+                "I can help you find and compare products! Just tell me what you're looking for.\n\n"
+                "What I can do:\n"
+                "• Search for products across German online shops\n"
+                "• Compare prices from multiple retailers\n"
+                "• Provide direct links to purchase\n"
+                "• Summarize product features and specifications\n"
+                "• Help you make informed buying decisions\n\n"
+                "Example searches:\n"
+                "- 'Find me a gaming laptop under 1500 euros'\n"
+                "- 'Compare prices for iPhone 15 Pro'\n"
+                "- 'Best wireless headphones for running'\n"
+                "- 'Affordable coffee machines with milk frother'\n"
+                "- 'Top rated 4K monitors for home office'\n\n"
+                "No document upload needed - Just ask what you want to buy!"
+            )
+        elif agent == "insights":
+            self.update_status("✓ Insights Agent selected - Upload documents for automatic analysis")
+        else:
+            self.update_status("✓ Standard mode - Upload your documents to begin")
+            if self.answer_text.get('1.0', 'end').strip() == "":
+                self.answer_text.delete('1.0', 'end')
+                self.answer_text.insert('1.0', "Upload documents and ask questions to get started.")
+    
+    def get_document_collection_insights(self):
+        """Get automated insights about the document collection"""
+        if not self.models_loaded:
+            return "Models not loaded yet"
+        
+        try:
+            # Get all documents from collection
+            all_docs = self.collection.get()
+            if not all_docs['documents']:
+                return "No documents available for analysis"
+            
+            # Prepare documents for analysis
+            documents = []
+            for i, (doc, metadata) in enumerate(zip(all_docs['documents'], all_docs['metadatas'])):
+                documents.append({
+                    'content': doc,
+                    'metadata': metadata,
+                    'id': all_docs['ids'][i]
+                })
+            
+            # Get automated insights using LLM
+            insights = self.agents.auto_document_insights(documents)
+            
+            # Format insights in a clean, professional layout
+            insight_text = f"INTELLIGENT DOCUMENT ANALYSIS\n\n"
+            insight_text += f"Document Collection: {insights['document_count']} chunks analyzed\n"
+            insight_text += f"Analysis Depth: {insights.get('analyzed_samples', 'N/A')} representative samples\n"
+            insight_text += f"Generated: {insights['analysis_timestamp'][:19].replace('T', ' ')}\n\n\n"
+            
+            # Clean the LLM output of markdown formatting
+            if insights.get('intelligent_summary'):
+                clean_summary = insights['intelligent_summary']
+                
+                # Remove markdown bold/italic
+                clean_summary = re.sub(r'\*\*(.+?)\*\*', r'\1', clean_summary)  # **bold**
+                clean_summary = re.sub(r'\*(.+?)\*', r'\1', clean_summary)      # *italic*
+                clean_summary = re.sub(r'__(.+?)__', r'\1', clean_summary)      # __bold__
+                clean_summary = re.sub(r'_(.+?)_', r'\1', clean_summary)        # _italic_
+                
+                # Remove markdown headers
+                clean_summary = re.sub(r'^#{1,6}\s+', '', clean_summary, flags=re.MULTILINE)
+                
+                # Clean bullet points and numbering
+                clean_summary = re.sub(r'^\s*[-\*\•]\s+', '  • ', clean_summary, flags=re.MULTILINE)
+                clean_summary = re.sub(r'^\s*\d+[\.\)]\s+', '  ', clean_summary, flags=re.MULTILINE)
+                
+                # Remove extra blank lines
+                clean_summary = re.sub(r'\n{3,}', '\n\n', clean_summary)
+                
+                insight_text += clean_summary.strip()
+                insight_text += "\n\n\n"
+            
+            # Add structured insights if available
+            if insights.get('themes'):
+                insight_text += "IDENTIFIED THEMES\n\n"
+                for i, theme in enumerate(insights['themes'][:5], 1):
+                    insight_text += f"{i}. {theme['term']}\n"
+                insight_text += "\n\n"
+            
+            if insights.get('key_entities'):
+                insight_text += "EXTRACTED ENTITIES\n\n"
+                for entity_group in insights['key_entities']:
+                    insight_text += f"{entity_group['type']}:\n"
+                    for item in entity_group['items'][:3]:
+                        insight_text += f"  • {item}\n"
+                    insight_text += "\n"
+                insight_text += "\n"
+            
+            insight_text += "TIP: Use these insights to formulate targeted questions or explore specific topics in greater depth."
+            
+            return insight_text
+            
+        except Exception as e:
+            return f"Error generating insights:\n\n{str(e)}\n\nPlease try again or check your documents."
+    
+    def show_document_insights(self):
+        """Show automated document collection insights"""
+        if not self.models_loaded:
+            messagebox.showwarning("Please Wait", "Models still loading.")
+            return
+        
+        if self.doc_listbox.size() == 0:
+            messagebox.showwarning("No Documents", "Upload documents first to generate insights.")
+            return
+        
+        # Disable buttons during processing
+        self.insights_btn.config(state='disabled')
+        self.ask_btn.config(state='disabled')
+        self.summary_btn.config(state='disabled')
+        
+        # Show insights in the answer area with animation
+        self.answer_text.delete('1.0', 'end')
+        self.answer_text.insert('1.0', "🤖 Generating document collection insights...\n\n⏳ Processing")
+        self.update_status("🤖 AI agents analyzing document collection...")
+        
+        # Start processing animation
+        self.processing = True
+        self.insights_start_time = time.time()
+        self._animate_insights_processing()
+        
+        def generate_insights():
+            try:
+                insights = self.get_document_collection_insights()
+                self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.answer_text.insert('1.0', insights))
+                
+                elapsed = time.time() - self.insights_start_time
+                self.root.after(0, lambda: self.update_status(f"✓ Document insights generated in {elapsed:.2f}s"))
+            except Exception as e:
+                error_msg = f"❌ Error generating insights: {str(e)}"
+                self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.answer_text.insert('1.0', error_msg))
+                self.root.after(0, lambda: self.update_status(f"❌ Error: {str(e)}"))
+            finally:
+                self.processing = False
+                self.root.after(0, lambda: self.insights_btn.config(state='normal'))
+                self.root.after(0, lambda: self.ask_btn.config(state='normal'))
+                self.root.after(0, lambda: self.summary_btn.config(state='normal'))
+        
+        # Run in background thread
+        threading.Thread(target=generate_insights, daemon=True).start()
+    
+    def _animate_insights_processing(self):
+        """Animate insights processing with elapsed time"""
+        if not hasattr(self, 'processing') or not self.processing:
+            return
+        
+        try:
+            elapsed = time.time() - self.insights_start_time
+            dots = "." * ((int(elapsed * 2) % 4))  # Animated dots
+            
+            # Update the processing message with elapsed time
+            current_text = self.answer_text.get('1.0', 'end-1c')
+            if "🤖 Generating" in current_text:
+                self.answer_text.delete('1.0', 'end')
+                self.answer_text.insert('1.0', 
+                    f"🤖 Generating document collection insights...\n\n"
+                    f"⏳ Analyzing documents{dots}\n"
+                    f"⏱️  Elapsed: {elapsed:.1f}s")
+            
+            # Schedule next update
+            self.root.after(500, self._animate_insights_processing)
+            
+        except Exception:
+            pass
+    
     def setup_gui(self):
         """Create modern, commercial-grade GUI"""
         self.root = tk.Tk()
@@ -775,6 +1836,9 @@ class DocumentQAApp:
         
         # Initialize mode variable
         self.rag_mode = tk.StringVar(value="basic")
+        
+        # Initialize agent selection variable
+        self.agent_mode = tk.StringVar(value="None")
         
         # Configure ttk styles for modern look
         self.style = ttk.Style()
@@ -848,14 +1912,24 @@ class DocumentQAApp:
         right_header.pack(side='right', fill='y')
         
         # Web Version button
-        self.web_btn = tk.Button(right_header, text="🌐 Web",
+        self.web_btn = tk.Button(right_header, text="🌐 Launch Web",
                                 command=self.launch_web_version,
-                                font=('Segoe UI', 10, 'bold'),
-                                bg=self.colors['accent_secondary'], fg='white',
-                                activebackground='#7c3aed',
-                                relief='flat', padx=15, pady=8,
+                                font=('Segoe UI', 11, 'bold'),
+                                bg='#10a37f', fg='white',
+                                activebackground='#0d8a6b',
+                                relief='flat', padx=20, pady=10,
                                 cursor='hand2', borderwidth=0)
         self.web_btn.pack(side='right', padx=(15, 0))
+        
+        # Add hover effects for web button
+        def on_web_enter(e):
+            self.web_btn.config(bg='#0d8a6b', relief='raised')
+        
+        def on_web_leave(e):
+            self.web_btn.config(bg='#10a37f', relief='flat')
+        
+        self.web_btn.bind("<Enter>", on_web_enter)
+        self.web_btn.bind("<Leave>", on_web_leave)
         
         # Trial/License indicator
         if self.trial_info and self.trial_info[0]:  # is_trial
@@ -1072,7 +2146,57 @@ class DocumentQAApp:
                                        cursor='hand2')
         advanced_radio.pack(side='left')
         
+        # Agent selection section
+        agent_frame = tk.Frame(question_section, bg=self.colors['bg_card'])
+        agent_frame.pack(fill='x', pady=(12, 0))
+        
+        tk.Label(agent_frame, text="AI Agent", 
+                font=('Segoe UI', 10, 'bold'), 
+                bg=self.colors['bg_card'], fg=self.colors['text_primary']).pack(side='left', padx=(0, 10))
+        
+        # Agent selector dropdown
+        agent_dropdown_container = tk.Frame(agent_frame, bg=self.colors['border'], padx=1, pady=1)
+        agent_dropdown_container.pack(side='left', fill='x', expand=True)
+        
+        # Configure combobox style
+        self.style.configure('Agent.TCombobox',
+                            fieldbackground=self.colors['bg_input'],
+                            background=self.colors['bg_input'],
+                            foreground=self.colors['text_primary'],
+                            arrowcolor=self.colors['accent_primary'],
+                            borderwidth=0,
+                            relief='flat')
+        
+        self.agent_selector = ttk.Combobox(agent_dropdown_container,
+                                          textvariable=self.agent_mode,
+                                          values=["None", "Insights", "Tax Germany", "E-Commerce Germany", "BürokratAI"],
+                                          state='readonly',
+                                          font=('Segoe UI', 10),
+                                          style='Agent.TCombobox',
+                                          width=20)
+        self.agent_selector.pack(fill='x', padx=5, pady=5)
+        
+        # Agent info label
+        self.agent_info = tk.Label(agent_frame, text="None - Use your uploaded documents", 
+                                   font=('Segoe UI', 9), 
+                                   bg=self.colors['bg_card'], fg=self.colors['text_secondary'],
+                                   wraplength=300, justify='left')
+        self.agent_info.pack(side='left', padx=(10, 0))
+        
+        # Bind agent selection change
+        self.agent_selector.bind('<<ComboboxSelected>>', self.on_agent_change)
+        
         # Action buttons - on the same row, right side
+        self.insights_btn = tk.Button(mode_frame, text="🤖 Insights",
+                                     command=self.show_document_insights,
+                                     font=('Segoe UI', 9, 'bold'),
+                                     bg=self.colors['accent_secondary'], fg='white',
+                                     activebackground='#7c3aed',
+                                     relief='flat', padx=12, pady=6,
+                                     cursor='hand2', state='disabled',
+                                     borderwidth=0)
+        self.insights_btn.pack(side='right', padx=(5, 0))
+        
         self.summary_btn = tk.Button(mode_frame, text="📝 Summarize",
                                      command=lambda: self.ask_question_thread('summarize'),
                                      font=('Segoe UI', 9, 'bold'),
@@ -1144,9 +2268,11 @@ class DocumentQAApp:
         context_section.pack(fill='both', expand=True, padx=20, pady=20)
         
         # Info text
-        tk.Label(context_section, text="Relevant passages with keyword highlighting", 
+        info_label = tk.Label(context_section, text="Relevant passages with keywords", 
                 font=('Segoe UI', 9), 
-                bg=self.colors['bg_card'], fg=self.colors['text_secondary']).pack(anchor='w', pady=(0, 10))
+                bg=self.colors['bg_card'], fg=self.colors['text_secondary'],
+                wraplength=250, justify='left')
+        info_label.pack(anchor='w', pady=(0, 10))
         
         # Context text with warm background
         context_container = tk.Frame(context_section, bg=self.colors['border'], padx=2, pady=2)
@@ -1346,21 +2472,30 @@ Contact: sales@doqurix.com"""
         self.doc_count_label.config(text=f"{count} document{'s' if count != 1 else ''} loaded")
     
     def upload_document(self):
-        """Handle upload"""
+        """Handle upload - supports multiple file selection"""
         if not self.models_loaded:
             messagebox.showwarning("Please Wait", "Models still loading.")
             return
         
+        filetypes = [("Supported Documents", "*.pdf *.docx"), 
+                     ("PDF files", "*.pdf"),
+                     ("Word Documents", "*.docx"),
+                     ("All files", "*.*")]
+        
         file_paths = filedialog.askopenfilenames(
-            title="Select PDFs",
-            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
+            title="Select Documents (Multiple Selection Enabled)",
+            filetypes=filetypes
         )
         
         if file_paths:
+            file_count = len(file_paths)
+            if file_count > 1:
+                self.update_status(f"📚 Processing {file_count} documents...")
+            
             for file_path in file_paths:
-                threading.Thread(target=self.process_document, args=(file_path,), daemon=True).start()
+                threading.Thread(target=self.process_document, args=(file_path, file_count), daemon=True).start()
     
-    def process_document(self, file_path):
+    def process_document(self, file_path, total_files=1):
         """Process document"""
         try:
             filename = os.path.basename(file_path)
@@ -1372,9 +2507,10 @@ Contact: sales@doqurix.com"""
             self.root.after(0, lambda: self.delete_btn.config(state='normal'))
             self.update_status(f"✓ Added {filename}")
             
-            # Show confirmation message
-            self.root.after(0, lambda: messagebox.showinfo("Document Added", 
-                f"'{filename}' has been successfully uploaded.\n\nExtracted {chunks} text chunks for analysis."))
+            # Show confirmation message only for single file or suppress for batch
+            if total_files == 1:
+                self.root.after(0, lambda: messagebox.showinfo("Document Added", 
+                    f"'{filename}' has been successfully uploaded.\n\nExtracted {chunks} text chunks for analysis."))
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to process document:\n{str(e)}"))
     
@@ -1434,8 +2570,17 @@ Contact: sales@doqurix.com"""
             messagebox.showerror("Error", f"Failed to remove document:\n{str(e)}")
 
     def add_document(self, file_path):
-        """Add document"""
-        text = self.extract_text_from_pdf(file_path)
+        """Add document - supports PDF and DOCX"""
+        # Detect file type and extract text accordingly
+        file_ext = os.path.splitext(file_path)[1].lower()
+        
+        if file_ext == '.pdf':
+            text = self.extract_text_from_pdf(file_path)
+        elif file_ext in ['.docx', '.doc']:
+            text = self.extract_text_from_docx(file_path)
+        else:
+            raise ValueError(f"Unsupported file type: {file_ext}")
+        
         chunks = self.smart_chunk_text(text)
         
         for i, chunk in enumerate(chunks):
@@ -1462,6 +2607,94 @@ Contact: sales@doqurix.com"""
             for page in reader.pages:
                 text += page.extract_text() + "\n"
         return text
+    
+    def extract_text_from_docx(self, file_path):
+        """Advanced extraction from DOCX with comprehensive content parsing"""
+        if not DOCX_AVAILABLE:
+            raise ImportError("python-docx library is required for Word document support. Install with: pip install python-docx")
+        
+        try:
+            doc = Document(file_path)
+            full_text = []
+            
+            # Extract headers from all sections
+            for section in doc.sections:
+                if section.header:
+                    header_text = self._extract_header_footer_text(section.header)
+                    if header_text.strip():
+                        full_text.append(f"[HEADER] {header_text}")
+            
+            # Process document body with structured extraction
+            for element in doc.element.body:
+                if isinstance(element, CT_P):
+                    # Extract paragraph text with formatting context
+                    paragraph = Paragraph(element, doc)
+                    para_text = paragraph.text.strip()
+                    
+                    if para_text:
+                        # Detect heading styles for better structure
+                        if paragraph.style.name.startswith('Heading'):
+                            level = paragraph.style.name.replace('Heading ', '')
+                            full_text.append(f"\n[HEADING {level}] {para_text}\n")
+                        elif paragraph.style.name == 'Title':
+                            full_text.append(f"\n[TITLE] {para_text}\n")
+                        elif paragraph.style.name == 'List Paragraph':
+                            full_text.append(f"• {para_text}")
+                        else:
+                            full_text.append(para_text)
+                
+                elif isinstance(element, CT_Tbl):
+                    # Advanced table extraction with structure preservation
+                    table = Table(element, doc)
+                    table_text = self._extract_table_content(table)
+                    if table_text:
+                        full_text.append(f"\n[TABLE]\n{table_text}\n[/TABLE]\n")
+            
+            # Extract footers from all sections
+            for section in doc.sections:
+                if section.footer:
+                    footer_text = self._extract_header_footer_text(section.footer)
+                    if footer_text.strip():
+                        full_text.append(f"[FOOTER] {footer_text}")
+            
+            # Join with proper spacing and clean up
+            text = '\n'.join(full_text)
+            text = re.sub(r'\n{3,}', '\n\n', text)  # Remove excessive newlines
+            
+            return text
+            
+        except Exception as e:
+            raise Exception(f"Error extracting text from Word document: {str(e)}")
+    
+    def _extract_header_footer_text(self, header_footer):
+        """Extract text from header or footer"""
+        text_parts = []
+        for paragraph in header_footer.paragraphs:
+            if paragraph.text.strip():
+                text_parts.append(paragraph.text.strip())
+        return ' '.join(text_parts)
+    
+    def _extract_table_content(self, table):
+        """Extract and structure table content intelligently"""
+        table_data = []
+        
+        # Process each row
+        for i, row in enumerate(table.rows):
+            row_data = []
+            for cell in row.cells:
+                # Extract text from each cell, handling merged cells
+                cell_text = ' '.join(paragraph.text.strip() for paragraph in cell.paragraphs if paragraph.text.strip())
+                row_data.append(cell_text)
+            
+            if any(row_data):  # Only add non-empty rows
+                # Format first row as header if it looks like headers
+                if i == 0 and all(cell.strip() for cell in row_data):
+                    table_data.append(' | '.join(row_data))
+                    table_data.append('-' * 50)  # Separator line
+                else:
+                    table_data.append(' | '.join(row_data))
+        
+        return '\n'.join(table_data)
     
     def smart_chunk_text(self, text, chunk_size=600, overlap=200):
         """Smart chunking"""
@@ -1503,8 +2736,16 @@ Contact: sales@doqurix.com"""
         
         return chunks
     
-    def advanced_hybrid_search(self, question, n_results=15):
-        """Advanced hybrid search"""
+    def advanced_hybrid_search(self, question, n_results=15, alpha=0.7):
+        """
+        Advanced hybrid search with semantic prioritization
+        
+        Args:
+            question: The search query
+            n_results: Number of results to return
+            alpha: Weight for vector search (0-1). Higher = more semantic.
+                   Default 0.7 = 70% semantic, 30% keyword matching
+        """
         # Check if collection has documents
         collection_data = self.collection.get()
         if not collection_data['documents'] or len(collection_data['documents']) == 0:
@@ -1519,17 +2760,32 @@ Contact: sales@doqurix.com"""
         combined_docs = {}
         k = 60
         
-        for rank, (doc, metadata) in enumerate(zip(vector_results['documents'][0], 
-                                                     vector_results['metadatas'][0])):
+        # Add vector results with HIGHER weight (alpha = 0.7 by default)
+        for rank, (doc, metadata, distance) in enumerate(zip(
+            vector_results['documents'][0],
+            vector_results['metadatas'][0],
+            vector_results['distances'][0]
+        )):
+            # Filter by minimum similarity
+            # For cosine distance: 0 = identical, 2 = opposite
+            similarity = 1 - (distance / 2)  # Convert to similarity score [0-1]
+            
+            # Skip documents that are too dissimilar (< 30% similar)
+            if similarity < 0.3:
+                continue
+            
             doc_key = doc[:150]
             if doc_key not in combined_docs:
                 combined_docs[doc_key] = {
-                    'doc': doc, 
-                    'metadata': metadata, 
-                    'score': 0
+                    'doc': doc,
+                    'metadata': metadata,
+                    'score': 0,
+                    'vector_similarity': similarity  # Store for debugging
                 }
-            combined_docs[doc_key]['score'] += 1 / (k + rank)
+            # Weight by alpha (default 70% for semantic understanding)
+            combined_docs[doc_key]['score'] += alpha * (1 / (k + rank))
         
+        # BM25 search (keywords) with LOWER weight (1 - alpha = 0.3 by default)
         if self.bm25:
             tokenized_query = question.lower().split()
             bm25_scores = self.bm25.get_scores(tokenized_query)
@@ -1545,13 +2801,14 @@ Contact: sales@doqurix.com"""
                         if idx < len(all_docs['metadatas']):
                             metadata = all_docs['metadatas'][idx]
                             combined_docs[doc_key] = {
-                                'doc': doc, 
-                                'metadata': metadata, 
+                                'doc': doc,
+                                'metadata': metadata,
                                 'score': 0
                             }
                     
                     if doc_key in combined_docs:
-                        combined_docs[doc_key]['score'] += 1 / (k + rank)
+                        # Weight by (1 - alpha) (default 30% for keyword matching)
+                        combined_docs[doc_key]['score'] += (1 - alpha) * (1 / (k + rank))
         
         sorted_docs = sorted(combined_docs.values(), key=lambda x: x['score'], reverse=True)
         return sorted_docs[:n_results]
@@ -1609,7 +2866,7 @@ Contact: sales@doqurix.com"""
         # Default to English
         return 'english'
 
-    def generate_answer(self, question, contexts, mode='answer'):
+    def generate_answer(self, question, contexts, mode='answer', custom_system_prompt=None):
         """Generate answer using the AI model with language preservation"""
         # Get current RAG mode
         current_mode = self.rag_mode.get()
@@ -1620,7 +2877,12 @@ Contact: sales@doqurix.com"""
         else:
             num_contexts = 3  # Advanced: more detailed, 3 contexts
         
-        context_text = "\n\n".join([c['doc'] for c in contexts[:num_contexts]])
+        # Handle both dict and string context formats
+        if contexts and isinstance(contexts[0], dict):
+            context_text = "\n\n".join([c['doc'] for c in contexts[:num_contexts]])
+        else:
+            # If contexts is already a string (for tax agent), use it directly
+            context_text = contexts if isinstance(contexts, str) else "\n\n".join(contexts[:num_contexts])
         
         # Detect language from context
         detected_lang = self.detect_language(context_text)
@@ -1636,10 +2898,20 @@ Contact: sales@doqurix.com"""
         
         lang_instruction = lang_instructions.get(detected_lang, lang_instructions['english'])
         
+        # Use custom system prompt if provided (for specialized agents like tax agent)
+        if custom_system_prompt:
+            system_prompt = custom_system_prompt
+        elif mode == 'summarize':
+            system_prompt = f"""You are a professional assistant providing clear, well-structured summaries.
+{lang_instruction}"""
+        else:
+            system_prompt = f"""You are a professional assistant providing clear, concise answers.
+{lang_instruction}
+Write in complete sentences and paragraphs, not bullet points or lists."""
+        
         if mode == 'summarize':
             prompt = f"""<|im_start|>system
-You are a professional assistant providing clear, well-structured summaries.
-{lang_instruction}<|im_end|>
+{system_prompt}<|im_end|>
 <|im_start|>user
 Provide a clear and professional summary of the following content. Use proper paragraphs and avoid bullet points or numbered lists. Write in a natural, flowing narrative style.
 
@@ -1651,9 +2923,7 @@ Summary:<|im_end|>
 """
         else:
             prompt = f"""<|im_start|>system
-You are a professional assistant providing clear, concise answers.
-{lang_instruction}
-Write in complete sentences and paragraphs, not bullet points or lists.<|im_end|>
+{system_prompt}<|im_end|>
 <|im_start|>user
 Based on the following context, answer the question in a clear, professional manner. Write your answer in flowing paragraphs without using bullet points, numbered lists, or special formatting.
 
@@ -1744,23 +3014,33 @@ Answer:<|im_end|>
         threading.Thread(target=self.process_question, args=(question, mode), daemon=True).start()
     
     def _animate_processing(self):
-        """Animate processing dots"""
+        """Animate processing dots with elapsed time"""
         if not hasattr(self, 'processing') or not self.processing:
             return
         
         try:
+            import time
+            
+            # Calculate elapsed time if available
+            elapsed_str = ""
+            if hasattr(self, 'processing_start_time'):
+                elapsed = time.time() - self.processing_start_time
+                elapsed_str = f" ({elapsed:.1f}s)"
+            
             # Get current text and update dots
             current_text = self.answer_text.get('1.0', 'end')
             if "Processing" in current_text:
                 # Count current dots
                 dot_count = current_text.count('•')
                 if dot_count >= 5:
-                    # Reset dots
+                    # Reset dots with time
                     self.answer_text.delete('1.0', 'end')
-                    self.answer_text.insert('1.0', "🔍 Analyzing your question...\n\n⏳ Processing •")
+                    self.answer_text.insert('1.0', f"🔍 Analyzing your question...\n\n⏳ Processing{elapsed_str} •")
                 else:
-                    # Add a dot
-                    self.answer_text.insert('end-1c', ' •')
+                    # Update with dots and time - delete old content and rewrite
+                    self.answer_text.delete('1.0', 'end')
+                    dots = '•' * (dot_count + 1)
+                    self.answer_text.insert('1.0', f"🔍 Analyzing your question...\n\n⏳ Processing{elapsed_str} {dots}")
             
             # Schedule next animation frame
             self.root.after(400, self._animate_processing)
@@ -1768,21 +3048,80 @@ Answer:<|im_end|>
             pass
     
     def process_question(self, question, mode):
-        """Process question"""
+        """Process question with intelligent agent workflows"""
+        import time
+        start_time = time.time()  # Track start time
+        self.processing_start_time = start_time  # Store for animation
+        
         try:
+            # Get current agent mode - map display to internal
+            display_to_internal = {
+                "None": "none",
+                "Insights": "insights",
+                "Tax Germany": "tax_germany",
+                "E-Commerce Germany": "ecommerce_germany",
+                "BürokratAI": "buerokratai_germany"
+            }
+            agent_display = self.agent_mode.get()
+            agent = display_to_internal.get(agent_display, "none")
+            
+            # Handle different agents
+            if agent == "tax_germany":
+                # Use tax agent collection instead of user documents
+                self.process_tax_agent_question(question, mode, start_time)
+                return
+            elif agent == "ecommerce_germany":
+                # Use e-commerce agent for product search
+                self.process_ecommerce_question(question, mode, start_time)
+                return
+            elif agent == "buerokratai_germany":
+                # Use BürokratAI agent for immigration questions
+                self.process_buerokratai_question(question, mode, start_time)
+                return
+            elif agent == "insights":
+                # Use insights agent with user documents
+                # Enhanced document analysis
+                pass  # Continue with normal flow but with insights
+            
+            # Standard processing for "none" agent or insights agent with documents
             # Get current RAG mode
             current_mode = self.rag_mode.get()
             
-            if current_mode == "basic":
-                # Basic mode: Faster, fewer results
-                doc_results = self.advanced_hybrid_search(question, n_results=8)
-                top_k = 3
-                mode_label = "⚡ Basic"
+            # Agent-enhanced document retrieval
+            if hasattr(self, 'agents'):
+                # Use cross-language retrieval for better document discovery
+                all_docs = self.collection.get()
+                if all_docs['documents']:
+                    documents = []
+                    for i, (doc, metadata) in enumerate(zip(all_docs['documents'], all_docs['metadatas'])):
+                        documents.append({
+                            'content': doc,
+                            'metadata': metadata,
+                            'id': all_docs['ids'][i]
+                        })
+                    
+                    # Auto-triage documents for better relevance
+                    triaged_docs = self.agents.auto_triage_documents(documents[:50], question)  # Limit for performance
+                    
+                    # Use only high-priority documents for search if available
+                    high_priority = [d for d in triaged_docs if d['priority'] == 'high']
+                    if high_priority and len(high_priority) >= 3:
+                        # Focus search on high-priority docs
+                        priority_ids = [d['document']['id'] for d in high_priority[:20]]
+                        doc_results = self.advanced_hybrid_search_filtered(question, priority_ids, n_results=15 if current_mode == "advanced" else 8)
+                    else:
+                        # Fallback to standard search
+                        doc_results = self.advanced_hybrid_search(question, n_results=15 if current_mode == "advanced" else 8)
+                else:
+                    doc_results = []
             else:
-                # Advanced mode: More comprehensive
-                doc_results = self.advanced_hybrid_search(question, n_results=15)
-                top_k = 5
-                mode_label = "🎯 Advanced"
+                # Fallback to standard search
+                if current_mode == "basic":
+                    doc_results = self.advanced_hybrid_search(question, n_results=8)
+                    top_k = 3
+                else:
+                    doc_results = self.advanced_hybrid_search(question, n_results=15)
+                    top_k = 5
             
             if not doc_results:
                 self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
@@ -1790,15 +3129,33 @@ Answer:<|im_end|>
                     "❌ No documents found. Upload PDFs first."))
                 return
             
-            # Rerank based on mode
+            # Set top_k based on mode
+            top_k = 5 if current_mode == "advanced" else 3
+            mode_label = "🎯 Advanced" if current_mode == "advanced" else "⚡ Basic"
+            
+            # Rerank documents
             reranked_contexts = self.rerank_documents(question, doc_results, top_k=top_k)
             self.root.after(0, lambda: self.display_contexts(reranked_contexts, question))
             
+            # Generate initial answer
             answer = self.generate_answer(question, reranked_contexts, mode)
             
-            # Format enterprise-grade response
-            result = f"{answer}\n\n"
+            # Agent-enhanced answer refinement
+            if hasattr(self, 'agents') and current_mode == "advanced":
+                try:
+                    # Citation-aware answer refinement
+                    refined_result = self.agents.citation_aware_refinement(answer, reranked_contexts)
+                    if refined_result['validation_status'] == 'validated':
+                        answer = refined_result['refined_answer']
+                except Exception:
+                    pass  # Use original answer if refinement fails
             
+            # Calculate elapsed time
+            elapsed_time = time.time() - start_time
+            
+            # Format enterprise-grade response with timing
+            result = f"{answer}\n\n"
+            result += f"⏱️ Processed in {elapsed_time:.2f} seconds\n\n"
             result += "REFERENCES\n\n"
             
             for i, ctx in enumerate(reranked_contexts, 1):
@@ -1807,9 +3164,21 @@ Answer:<|im_end|>
                 result += f"  [{i}] {source}\n"
                 result += f"      Page: {page}\n\n"
             
+            # Generate follow-up questions for advanced mode
+            if hasattr(self, 'agents') and current_mode == "advanced":
+                try:
+                    followup_questions = self.agents.generate_followup_questions(question, answer, reranked_contexts)
+                    if followup_questions:
+                        result += "💡 SUGGESTED FOLLOW-UP QUESTIONS\n\n"
+                        for i, fq in enumerate(followup_questions, 1):
+                            result += f"  {i}. {fq}\n"
+                        result += "\n"
+                except Exception:
+                    pass  # Skip follow-ups if generation fails
+            
             self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
             self.root.after(0, lambda: self.answer_text.insert('1.0', result))
-            self.update_status(f"✓ Answer generated ({mode_label} mode)!")
+            self.update_status(f"✓ Answer generated ({mode_label} mode) in {elapsed_time:.2f}s")
             
         except Exception as e:
             error_msg = f"❌ Error: {str(e)}"
@@ -1820,6 +3189,598 @@ Answer:<|im_end|>
             self.processing = False  # Stop animation
             self.root.after(0, lambda: self.ask_btn.config(state='normal'))
             self.root.after(0, lambda: self.summary_btn.config(state='normal'))
+    
+    def process_tax_agent_question(self, question: str, mode: str, start_time: float):
+        """
+        Process questions using the tax agent - searches pre-loaded German tax knowledge.
+        Does not require user-uploaded documents.
+        """
+        try:
+            # Check if tax collection is initialized
+            if not hasattr(self, 'tax_collection') or self.tax_collection is None:
+                error_msg = "❌ Tax agent collection is not initialized. Please restart the application."
+                self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.answer_text.insert('1.0', error_msg))
+                self.update_status(error_msg)
+                return
+            
+            self.update_status(f"🔍 Searching German tax knowledge base...")
+            
+            # Generate query embedding
+            query_embedding = self.embedder.encode([question], convert_to_tensor=False)[0]
+            
+            # Search tax collection (semantic search only - no BM25 for tax knowledge)
+            search_results = self.tax_collection.query(
+                query_embeddings=[query_embedding.tolist()],
+                n_results=15,  # Get more initial results for better reranking
+                include=['documents', 'metadatas', 'distances']
+            )
+            
+            # Extract results
+            documents = search_results['documents'][0] if search_results['documents'] else []
+            metadatas = search_results['metadatas'][0] if search_results['metadatas'] else []
+            distances = search_results['distances'][0] if search_results['distances'] else []
+            
+            if not documents:
+                no_results_msg = ("I don't have specific information about that in my German tax knowledge base. "
+                                "Please try rephrasing your question or ask about:\n\n"
+                                "• Income Tax (Einkommensteuer) - brackets, classes, deductions\n"
+                                "• VAT (Umsatzsteuer) - rates, registration, exemptions\n"
+                                "• Corporate Tax (Körperschaftsteuer) - rates, regulations\n"
+                                "• Trade Tax (Gewerbesteuer) - municipal rates, calculations\n"
+                                "• Church Tax (Kirchensteuer) - rates, opt-out\n"
+                                "• Capital Gains Tax (Abgeltungsteuer)\n"
+                                "• Real Estate Transfer Tax (Grunderwerbsteuer)\n"
+                                "• Inheritance & Gift Tax (Erbschaft- und Schenkungsteuer)\n"
+                                "• Social Security Contributions")
+                self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.answer_text.insert('1.0', no_results_msg))
+                self.update_status("⚠ No relevant tax information found")
+                return
+            
+            self.update_status(f"📊 Reranking {len(documents)} tax knowledge chunks...")
+            
+            # Prepare contexts for reranking
+            contexts_for_reranking = []
+            for doc, meta, dist in zip(documents, metadatas, distances):
+                contexts_for_reranking.append({
+                    'text': doc,
+                    'metadata': meta,
+                    'distance': dist
+                })
+            
+            # Rerank using CrossEncoder
+            pairs = [[question, ctx['text']] for ctx in contexts_for_reranking]
+            rerank_scores = self.reranker.predict(pairs)
+            
+            # Sort by rerank score (higher is better)
+            for i, ctx in enumerate(contexts_for_reranking):
+                ctx['rerank_score'] = float(rerank_scores[i])
+            
+            reranked_contexts = sorted(contexts_for_reranking, 
+                                      key=lambda x: x['rerank_score'], 
+                                      reverse=True)
+            
+            # Take top 3 after reranking (reduced for smaller context window)
+            top_contexts = reranked_contexts[:3]
+            
+            # Build context string for LLM - truncate each context to 400 chars to fit in model's context window
+            context_str = ""
+            for i, ctx in enumerate(top_contexts, 1):
+                source = ctx['metadata'].get('source', 'Unknown')
+                # Truncate context text to fit within token limits
+                truncated_text = ctx['text'][:400] + "..." if len(ctx['text']) > 400 else ctx['text']
+                context_str += f"[Source {i} - {source}]\n{truncated_text}\n\n"
+            
+            self.update_status(f"💭 Generating expert tax answer...")
+            
+            # Generate answer using LLM with tax-specific system prompt (shortened for context window)
+            tax_system_prompt = """You are a German tax expert. Provide accurate information about German taxes including rates, thresholds, and procedures. Use the provided context to give precise answers."""
+
+            answer = self.generate_answer(question, context_str, custom_system_prompt=tax_system_prompt)
+            
+            # Calculate elapsed time
+            elapsed_time = time.time() - start_time
+            
+            # Format result for display
+            result = f"🇩🇪 GERMAN TAX AGENT ANSWER\n{'='*60}\n\n"
+            result += f"Question: {question}\n\n"
+            result += f"{'─'*60}\n\n"
+            result += f"{answer}\n\n"
+            result += f"{'─'*60}\n\n"
+            result += f"📚 KNOWLEDGE BASE SOURCES USED\n\n"
+            
+            for i, ctx in enumerate(top_contexts, 1):
+                source = ctx['metadata'].get('source', 'Unknown')
+                score = ctx['rerank_score']
+                snippet = ctx['text'][:200].replace('\n', ' ') + "..."
+                result += f"  [{i}] {source} (Relevance: {score:.3f})\n"
+                result += f"      {snippet}\n\n"
+            
+            result += f"✓ Processed in {elapsed_time:.2f}s using German tax knowledge base\n"
+            
+            # Update UI
+            self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+            self.root.after(0, lambda: self.answer_text.insert('1.0', result))
+            
+            # Also show context in context pane
+            context_display = "🇩🇪 TAX KNOWLEDGE BASE CONTEXT\n" + "="*60 + "\n\n"
+            for i, ctx in enumerate(top_contexts, 1):
+                source = ctx['metadata'].get('source', 'Unknown')
+                score = ctx['rerank_score']
+                context_display += f"SOURCE {i}: {source}\n"
+                context_display += f"Relevance Score: {score:.3f}\n"
+                context_display += f"{'-'*60}\n"
+                context_display += f"{ctx['text']}\n\n"
+                context_display += f"{'='*60}\n\n"
+            
+            self.root.after(0, lambda: self.context_text.delete('1.0', 'end'))
+            self.root.after(0, lambda: self.context_text.insert('1.0', context_display))
+            
+            self.update_status(f"✓ Tax agent answer generated in {elapsed_time:.2f}s")
+            
+        except Exception as e:
+            error_msg = f"❌ Error processing tax question: {str(e)}\n\nPlease try again or contact support."
+            self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+            self.root.after(0, lambda: self.answer_text.insert('1.0', error_msg))
+            self.update_status(f"❌ Error: {str(e)}")
+        finally:
+            self.processing = False  # Stop animation
+            self.root.after(0, lambda: self.ask_btn.config(state='normal'))
+            self.root.after(0, lambda: self.summary_btn.config(state='normal'))
+    
+    def process_buerokratai_question(self, question: str, mode: str, start_time: float):
+        """
+        Process questions using the BürokratAI agent - searches pre-loaded German immigration knowledge.
+        Does not require user-uploaded documents.
+        """
+        try:
+            from buerokratai_agent import BUEROKRATAI_SYSTEM_PROMPT, classify_topic, get_relevant_links
+            
+            # Check if BürokratAI collection is initialized
+            if not hasattr(self, 'buerokratai_collection') or self.buerokratai_collection is None:
+                error_msg = "❌ BürokratAI agent collection is not initialized. Please restart the application."
+                self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.answer_text.insert('1.0', error_msg))
+                self.update_status(error_msg)
+                return
+            
+            self.update_status(f"🔍 Searching German immigration knowledge base...")
+            
+            # Classify the topic for better context
+            topics = classify_topic(question)
+            
+            # Generate query embedding
+            query_embedding = self.embedder.encode([question], convert_to_tensor=False)[0]
+            
+            # Search BürokratAI collection
+            search_results = self.buerokratai_collection.query(
+                query_embeddings=[query_embedding.tolist()],
+                n_results=15,
+                include=['documents', 'metadatas', 'distances']
+            )
+            
+            # Extract results
+            documents = search_results['documents'][0] if search_results['documents'] else []
+            metadatas = search_results['metadatas'][0] if search_results['metadatas'] else []
+            distances = search_results['distances'][0] if search_results['distances'] else []
+            
+            if not documents:
+                no_results_msg = ("I don't have specific information about that in my German immigration knowledge base. "
+                                "Please try rephrasing your question or ask about:\n\n"
+                                "📋 Registration & Documents:\n"
+                                "• Anmeldung (Address Registration)\n"
+                                "• Tax ID (Steuer-ID) Application\n"
+                                "• Health Insurance Requirements\n\n"
+                                "🛂 Visas & Residence Permits:\n"
+                                "• EU Blue Card\n"
+                                "• Student Visa\n"
+                                "• Job Seeker Visa\n"
+                                "• Family Reunification\n\n"
+                                "🏠 Living in Germany:\n"
+                                "• Renting an Apartment\n"
+                                "• Opening a Bank Account\n"
+                                "• Driver's License Conversion")
+                self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.answer_text.insert('1.0', no_results_msg))
+                self.update_status("⚠ No relevant immigration information found")
+                return
+            
+            self.update_status(f"📊 Reranking {len(documents)} immigration knowledge chunks...")
+            
+            # Prepare contexts for reranking
+            contexts_for_reranking = []
+            for doc, meta, dist in zip(documents, metadatas, distances):
+                contexts_for_reranking.append({
+                    'text': doc,
+                    'metadata': meta,
+                    'distance': dist
+                })
+            
+            # Rerank using CrossEncoder
+            pairs = [[question, ctx['text']] for ctx in contexts_for_reranking]
+            rerank_scores = self.reranker.predict(pairs)
+            
+            # Sort by rerank score (higher is better)
+            for i, ctx in enumerate(contexts_for_reranking):
+                ctx['rerank_score'] = float(rerank_scores[i])
+            
+            reranked_contexts = sorted(contexts_for_reranking, 
+                                      key=lambda x: x['rerank_score'], 
+                                      reverse=True)
+            
+            # Take top 4 after reranking (immigration needs more context)
+            top_contexts = reranked_contexts[:4]
+            
+            # Build context string for LLM
+            context_str = ""
+            for i, ctx in enumerate(top_contexts, 1):
+                source = ctx['metadata'].get('source', 'Unknown')
+                truncated_text = ctx['text'][:500] + "..." if len(ctx['text']) > 500 else ctx['text']
+                context_str += f"[Source {i} - {source}]\n{truncated_text}\n\n"
+            
+            self.update_status(f"💭 Generating immigration guidance...")
+            
+            # Generate answer using LLM with BürokratAI system prompt
+            answer = self.generate_answer(question, context_str, custom_system_prompt=BUEROKRATAI_SYSTEM_PROMPT)
+            
+            # Calculate elapsed time
+            elapsed_time = time.time() - start_time
+            
+            # Get relevant links
+            relevant_links = get_relevant_links(topics)
+            
+            # Format result for display
+            result = f"🏛️ BÜROKRATAI - IMMIGRATION ASSISTANT\n{'='*60}\n\n"
+            result += f"Question: {question}\n\n"
+            result += f"{'─'*60}\n\n"
+            result += f"{answer}\n\n"
+            result += f"{'─'*60}\n\n"
+            result += f"📚 KNOWLEDGE BASE SOURCES USED\n\n"
+            
+            for i, ctx in enumerate(top_contexts, 1):
+                source = ctx['metadata'].get('source', 'Unknown')
+                score = ctx['rerank_score']
+                snippet = ctx['text'][:200].replace('\n', ' ') + "..."
+                result += f"  [{i}] {source} (Relevance: {score:.3f})\n"
+                result += f"      {snippet}\n\n"
+            
+            if relevant_links:
+                result += f"🔗 USEFUL OFFICIAL LINKS\n\n"
+                for name, url in relevant_links[:3]:
+                    result += f"  • {name}: {url}\n"
+                result += "\n"
+            
+            result += f"✓ Processed in {elapsed_time:.2f}s using German immigration knowledge base\n\n"
+            result += "⚠️ DISCLAIMER: This information is for guidance only.\n"
+            result += "   Please verify with official German authorities for current regulations."
+            
+            # Update UI
+            self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+            self.root.after(0, lambda: self.answer_text.insert('1.0', result))
+            
+            # Also show context in context pane
+            context_display = "🏛️ BÜROKRATAI KNOWLEDGE BASE CONTEXT\n" + "="*60 + "\n\n"
+            for i, ctx in enumerate(top_contexts, 1):
+                source = ctx['metadata'].get('source', 'Unknown')
+                score = ctx['rerank_score']
+                context_display += f"SOURCE {i}: {source}\n"
+                context_display += f"Relevance Score: {score:.3f}\n"
+                context_display += f"{'-'*60}\n"
+                context_display += f"{ctx['text']}\n\n"
+                context_display += f"{'='*60}\n\n"
+            
+            self.root.after(0, lambda: self.context_text.delete('1.0', 'end'))
+            self.root.after(0, lambda: self.context_text.insert('1.0', context_display))
+            
+            self.update_status(f"✓ BürokratAI answer generated in {elapsed_time:.2f}s")
+            
+        except Exception as e:
+            error_msg = f"❌ Error processing immigration question: {str(e)}\n\nPlease try again or contact support."
+            self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+            self.root.after(0, lambda: self.answer_text.insert('1.0', error_msg))
+            self.update_status(f"❌ Error: {str(e)}")
+        finally:
+            self.processing = False  # Stop animation
+            self.root.after(0, lambda: self.ask_btn.config(state='normal'))
+            self.root.after(0, lambda: self.summary_btn.config(state='normal'))
+    
+    def process_ecommerce_question(self, question, mode, start_time):
+        """Process e-commerce product search with professional agent"""
+        import time
+        from ecommerce_agent import ECommerceAgent
+        
+        try:
+            # Show loading animation
+            self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+            self.root.after(0, lambda: self.answer_text.insert('1.0', "🛒 Extracting search keywords...\n\n⏳ Processing •"))
+            
+            # Start animation
+            self.processing = True
+            self.root.after(400, self._animate_processing)
+            
+            # Initialize professional e-commerce agent
+            agent = ECommerceAgent(cache_dir='./cache/ecommerce')
+            
+            try:
+                # ALWAYS use LLM to extract proper search keywords first
+                print(f"🔑 Extracting search keywords from: '{question}'")
+                search_keywords = agent.extract_search_keywords(question, self.llm)
+                print(f"✓ Search keywords: '{search_keywords}'")
+                
+                # Update UI to show keyword extraction
+                self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.answer_text.insert('1.0', f"🛒 Searching German retailers...\n\n🔑 Keywords: {search_keywords}\n\n⏳ Processing •"))
+                
+                optimized_query = search_keywords  # Keep track of what we searched for
+                
+                # First attempt: Search with extracted keywords
+                products = agent.search_products(search_keywords, max_results=15)
+                
+                # If no products found, try additional optimization
+                if not products or len(products) == 0:
+                    print(f"⚠ No products found for: {search_keywords}")
+                    print(f"🤖 Using LLM to further optimize search query...")
+                    
+                    try:
+                        # Use LLM to optimize the query
+                        optimization_prompt = """Du bist ein E-Commerce-Suchexperte. Optimiere die folgende Produktsuchanfrage für bessere Ergebnisse:
+
+1. Verwende gängige Produktkategorien (z.B. "günstig" → "budget", "billig" → "preiswert")
+2. Füge relevante Suchbegriffe hinzu (z.B. "phone" → "smartphone")
+3. Entferne zu spezifische oder unklare Begriffe
+4. Nutze deutsche Standardbegriffe, die Händler verwenden
+
+Gib NUR die optimierte Suchanfrage zurück, keine Erklärung."""
+                        
+                        opt_response = self.llm.create_chat_completion(
+                            messages=[
+                                {"role": "system", "content": optimization_prompt},
+                                {"role": "user", "content": f"Optimiere diese Suche: {search_keywords}"}
+                            ],
+                            max_tokens=50,
+                            temperature=0.3
+                        )
+                        
+                        optimized_query = opt_response['choices'][0]['message']['content'].strip()
+                        print(f"✓ Further optimized query: {optimized_query}")
+                        
+                        # Update UI to show optimization
+                        self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                        self.root.after(0, lambda: self.answer_text.insert('1.0', f"🛒 Searching German retailers...\n\n🔑 Keywords: {optimized_query}\n\n⏳ Processing •"))
+                        
+                        # Second attempt with optimized query
+                        if optimized_query and optimized_query != search_keywords:
+                            products = agent.search_products(optimized_query, max_results=15)
+                            print(f"✓ Found {len(products)} products with optimized query")
+                        
+                    except Exception as e:
+                        print(f"✗ Query optimization failed: {e}")
+                
+                # Final fallback
+                if not products or len(products) == 0:
+                    print(f"📋 Using intelligent fallback results...")
+                    products = agent.get_fallback_results(optimized_query or search_keywords)
+                
+                # Format results with LLM summarization
+                formatted_result = self.format_ecommerce_results_pro(question, products, optimized_query)
+                
+                # Calculate elapsed time
+                elapsed_time = time.time() - start_time
+                
+                # Update UI with results
+                self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.answer_text.insert('1.0', formatted_result + f"\n\n✓ Search completed in {elapsed_time:.2f}s"))
+                
+                # Update context pane with detailed product data
+                context_display = "🛒 PROFESSIONAL PRODUCT SEARCH RESULTS\n" + "="*60 + "\n\n"
+                context_display += f"Original Query: {question}\n"
+                context_display += f"Search Keywords: {optimized_query}\n\n"
+                for i, product in enumerate(products[:10], 1):
+                    context_display += f"PRODUCT {i}:\n"
+                    context_display += f"Title: {product.title}\n"
+                    context_display += f"Merchant: {product.merchant}\n"
+                    if product.price:
+                        context_display += f"Price: {product.price:.2f} {product.currency}\n"
+                    if product.rating:
+                        context_display += f"Rating: {product.rating}/5.0\n"
+                    context_display += f"Availability: {product.availability}\n"
+                    context_display += f"URL: {product.url}\n"
+                    context_display += f"{'-'*60}\n\n"
+                
+                self.root.after(0, lambda: self.context_text.delete('1.0', 'end'))
+                self.root.after(0, lambda: self.context_text.insert('1.0', context_display))
+                
+                self.update_status(f"✓ E-commerce search completed in {elapsed_time:.2f}s")
+                
+            finally:
+                agent.close()
+            
+        except Exception as e:
+            error_msg = f"❌ Error searching products: {str(e)}\n\nPlease try again with a different search query."
+            self.root.after(0, lambda: self.answer_text.delete('1.0', 'end'))
+            self.root.after(0, lambda: self.answer_text.insert('1.0', error_msg))
+            self.update_status(f"❌ Error: {str(e)}")
+        finally:
+            self.processing = False
+            self.root.after(0, lambda: self.ask_btn.config(state='normal'))
+            self.root.after(0, lambda: self.summary_btn.config(state='normal'))
+    
+    def format_ecommerce_results_pro(self, query, products, optimized_query=None):
+        """Format professional product search results with LLM analysis"""
+        from ecommerce_agent import Product
+        
+        if not products:
+            return "❌ Keine Produkte gefunden. Versuchen Sie eine andere Suchanfrage."
+        
+        # Create rich context from product objects
+        context = "PROFESSIONELLE PRODUKTSUCHE - ERGEBNISSE:\n\n"
+        if optimized_query and optimized_query != query:
+            context += f"[Original: {query} → Optimiert: {optimized_query}]\n\n"
+        
+        for i, product in enumerate(products[:10], 1):
+            context += f"{i}. {product.title}\n"
+            context += f"   Händler: {product.merchant}\n"
+            
+            if product.price:
+                context += f"   Preis: {product.price:.2f} {product.currency}\n"
+            
+            if product.rating:
+                context += f"   Bewertung: {product.rating}/5.0 Sterne\n"
+            
+            if product.reviews_count:
+                context += f"   Anzahl Bewertungen: {product.reviews_count}\n"
+            
+            context += f"   Verfügbarkeit: {product.availability}\n"
+            context += f"   URL: {product.url}\n"
+            
+            if product.description:
+                context += f"   Beschreibung: {product.description[:200]}\n"
+            
+            context += "\n"
+        
+        # Use LLM to analyze and compare products professionally
+        system_prompt = """Sie sind ein Experte für E-Commerce im deutschen Markt. Analysieren Sie die Produktsuchergebnisse und bieten Sie:
+
+1. Eine kurze Zusammenfassung der gefundenen Produkte
+2. Wichtige Features und Spezifikationen (falls verfügbar)
+3. Preisvergleich und Preis-Leistungs-Verhältnis
+4. Empfehlung: Welches Produkt bietet das beste Preis-Leistungs-Verhältnis
+5. Kaufberatung mit klaren Gründen
+
+Formatieren Sie Ihre Antwort benutzerfreundlich mit Aufzählungspunkten und klaren Abschnitten. Fokus auf Kaufentscheidungshilfe."""
+        
+        user_prompt = f"Benutzer sucht nach: {query}\n\n{context}\n\nBitte umfassenden Produktvergleich und Empfehlung bereitstellen."
+        
+        try:
+            # Generate LLM response with professional analysis
+            answer = self.generate_answer(context, user_prompt, custom_system_prompt=system_prompt)
+            
+            # Build professional result with product cards
+            result = "🛒 PROFESSIONELLE PRODUKTSUCHE (DEUTSCHER MARKT)\n" + "="*70 + "\n\n"
+            result += answer + "\n\n"
+            result += "📦 DIREKTE PRODUKTLINKS:\n" + "-"*70 + "\n\n"
+            
+            # Add formatted product cards
+            for i, product in enumerate(products[:8], 1):
+                result += f"╔══ PRODUKT {i} ══╗\n"
+                result += f"║ {product.title[:65]}\n"
+                result += f"║ \n"
+                result += f"║ Händler: {product.merchant}\n"
+                
+                if product.price:
+                    result += f"║ 💰 Preis: {product.price:.2f} {product.currency}\n"
+                
+                if product.rating:
+                    stars = "⭐" * int(product.rating)
+                    result += f"║ {stars} ({product.rating}/5.0)\n"
+                
+                result += f"║ \n"
+                result += f"║ 🔗 Link: {product.url[:60]}\n"
+                result += f"╚═══════════════╝\n\n"
+            
+            return result
+            
+        except Exception as e:
+            print(f"LLM analysis error: {e}")
+            # Fallback to structured listing
+            result = "🛒 PRODUKTSUCHE (DEUTSCHER MARKT)\n" + "="*70 + "\n\n"
+            result += f"Gefunden: {len(products)} Produkte für '{query}'\n\n"
+            
+            for i, product in enumerate(products[:8], 1):
+                result += f"{i}. {product.title}\n"
+                result += f"   Händler: {product.merchant}\n"
+                if product.price:
+                    result += f"   Preis: {product.price:.2f} {product.currency}\n"
+                if product.rating:
+                    result += f"   Bewertung: {product.rating}/5.0 ⭐\n"
+                result += f"   🔗 {product.url}\n\n"
+            
+            return result
+    
+    def advanced_hybrid_search_filtered(self, question, doc_ids, n_results=15, alpha=0.7):
+        """Enhanced hybrid search filtered by specific document IDs"""
+        try:
+            # Filter collection to only include specified IDs
+            filtered_results = self.collection.get(ids=doc_ids)
+            
+            if not filtered_results['documents']:
+                return []
+            
+            question_embedding = self.embedder.encode(question).tolist()
+            
+            # Create temporary collection for filtered search
+            combined_docs = {}
+            k = 60
+            
+            # Vector search on filtered documents
+            for rank, (doc, metadata, doc_id) in enumerate(zip(
+                filtered_results['documents'],
+                filtered_results['metadatas'], 
+                filtered_results['ids']
+            )):
+                doc_embedding = self.embedder.encode(doc).tolist()
+                
+                # Calculate similarity
+                similarity = np.dot(question_embedding, doc_embedding) / (
+                    np.linalg.norm(question_embedding) * np.linalg.norm(doc_embedding)
+                )
+                
+                # Skip very dissimilar documents
+                if similarity < 0.3:
+                    continue
+                
+                doc_key = doc[:150]
+                combined_docs[doc_key] = {
+                    'doc': doc,
+                    'metadata': metadata,
+                    'score': alpha * (1 / (k + rank)),
+                    'vector_similarity': similarity
+                }
+            
+            # BM25 search on filtered corpus if available
+            if self.bm25 and self.bm25_corpus:
+                # Find indices of filtered documents in BM25 corpus
+                filtered_indices = []
+                for doc_id in doc_ids:
+                    try:
+                        all_ids = self.collection.get()['ids']
+                        if doc_id in all_ids:
+                            idx = all_ids.index(doc_id)
+                            if idx < len(self.bm25_corpus):
+                                filtered_indices.append(idx)
+                    except:
+                        continue
+                
+                if filtered_indices:
+                    tokenized_query = question.lower().split()
+                    bm25_scores = self.bm25.get_scores(tokenized_query)
+                    
+                    # Score only filtered documents
+                    for rank, idx in enumerate(filtered_indices):
+                        if idx < len(self.bm25_corpus):
+                            doc = self.bm25_corpus[idx]
+                            doc_key = doc[:150]
+                            
+                            if doc_key not in combined_docs:
+                                all_docs = self.collection.get()
+                                if idx < len(all_docs['metadatas']):
+                                    metadata = all_docs['metadatas'][idx]
+                                    combined_docs[doc_key] = {
+                                        'doc': doc,
+                                        'metadata': metadata,
+                                        'score': 0
+                                    }
+                            
+                            if doc_key in combined_docs:
+                                combined_docs[doc_key]['score'] += (1 - alpha) * (bm25_scores[idx] / (1 + bm25_scores[idx]))
+            
+            sorted_docs = sorted(combined_docs.values(), key=lambda x: x['score'], reverse=True)
+            return sorted_docs[:n_results]
+            
+        except Exception as e:
+            # Fallback to standard search
+            return self.advanced_hybrid_search(question, n_results)
     
     def run(self):
         """Start"""

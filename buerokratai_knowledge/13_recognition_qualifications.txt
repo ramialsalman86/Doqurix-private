@@ -1,0 +1,320 @@
+RECOGNITION OF FOREIGN QUALIFICATIONS (ANERKENNUNG)
+===================================================
+Source: IHK FOSA, KMK Anabin, Recognition Portal Germany
+Last Updated: January 2026
+
+OVERVIEW
+--------
+To work in certain professions in Germany, foreign qualifications 
+must be officially recognized as equivalent to German ones.
+This is especially important for regulated professions.
+
+WHY RECOGNITION MATTERS
+-----------------------
+Recognition is needed for:
+- Working in regulated professions
+- Getting appropriate salary level
+- Applying for skilled worker visa
+- Career advancement
+- EU Blue Card (university degree must be recognized)
+
+REGULATED VS. NON-REGULATED PROFESSIONS
+---------------------------------------
+
+REGULATED PROFESSIONS:
+Cannot practice without official recognition.
+Need license or permit from authorities.
+
+Examples:
+- Doctors (Ärzte)
+- Dentists (Zahnärzte)
+- Pharmacists (Apotheker)
+- Nurses (Krankenpfleger)
+- Physiotherapists
+- Teachers (Lehrer)
+- Lawyers (Rechtsanwälte)
+- Engineers (in some states)
+- Architects (in some states)
+- Social workers
+- Psychologists (clinical)
+
+NON-REGULATED PROFESSIONS:
+Can work without recognition, but recognition helps:
+- Better salary negotiations
+- Easier visa applications
+- Career opportunities
+
+Examples:
+- IT specialists
+- Marketing managers
+- Graphic designers
+- Most business professions
+- Administrative jobs
+
+UNIVERSITY DEGREES - ANABIN DATABASE
+------------------------------------
+Website: anabin.kmk.org
+
+Anabin is the official database for:
+- Comparing international educational systems
+- Checking if your university is recognized
+- Seeing how your degree compares
+
+How to check:
+1. Go to anabin.kmk.org
+2. Search by country
+3. Find your institution
+4. Check the rating
+
+Institution ratings:
+- H+: Comparable to German university
+- H+/-: Comparable with restrictions
+- H-: Not comparable to German institution
+
+Degree ratings:
+- äquivalent: Equivalent to German degree
+- entspricht: Corresponds to German degree
+- bedingt vergleichbar: Conditionally comparable
+
+RECOGNITION PROCESS - STEP BY STEP
+----------------------------------
+
+Step 1: Find the Responsible Authority
+- Use: anerkennung-in-deutschland.de
+- Enter your profession and location
+- Get specific authority contact
+
+Step 2: Gather Documents
+Typically needed:
+- Qualification certificates
+- Proof of work experience
+- ID/passport
+- CV (curriculum vitae)
+- Proof of training content (curriculum)
+
+All documents usually need:
+- Certified translations (German)
+- Certified copies
+
+Step 3: Submit Application
+- Online or by mail
+- Pay fee
+- Wait for assessment (3-4 months)
+
+Step 4: Receive Decision
+Possible outcomes:
+- Full recognition (volle Anerkennung)
+- Partial recognition (teilweise Anerkennung)
+- No recognition with explanation
+
+PARTIAL RECOGNITION - WHAT NEXT?
+--------------------------------
+If not fully recognized, you may need:
+
+Compensation measures:
+- Additional exam (Eignungsprüfung)
+- Adaptation period (Anpassungslehrgang)
+- Additional training/coursework
+
+Recognition partnerships:
+- IQ Network helps with additional qualifications
+- Funded programs available
+- www.netzwerk-iq.de
+
+COSTS
+-----
+Recognition costs vary by profession:
+- Simple professions: €100-200
+- Complex professions: €400-600
+- Medical professions: Up to €1,000+
+
+Additional costs:
+- Certified translations: €50-200 per document
+- Notarized copies: €20-50 per document
+- Additional courses if needed
+
+TIMELINE
+--------
+Standard assessment: 3-4 months
+Complex cases: Up to 6 months
+With additional requirements: Longer
+
+SPECIFIC PROFESSION GUIDES
+==========================
+
+MEDICAL DOCTORS
+---------------
+Authority: State health authority (Landesgesundheitsamt)
+
+Requirements:
+1. Medical degree from recognized university
+2. German language (C1 medical + B2 general)
+3. Knowledge exam (Kenntnisprüfung) OR
+4. Adaptation period + exam
+
+Process:
+1. Get license to practice (Approbation) OR
+2. Temporary permit (Berufserlaubnis) - limited
+
+Steps:
+1. Application to state authority
+2. Document verification
+3. Language exam (telc Deutsch B2-C1 Medizin or similar)
+4. Professional exam OR adaptation period
+5. Receive Approbation
+
+Timeline: 6-18 months
+Cost: €500-1,500
+
+NURSES
+------
+Authority: State authority for nursing professions
+
+Requirements:
+1. Nursing qualification
+2. German language B1-B2 (state-dependent)
+3. Recognition or compensation measure
+
+Many shortages - often faster process!
+Some states have recognition programs specifically for nurses.
+
+ENGINEERS
+---------
+Protected title in some states (e.g., Bavaria, Baden-Württemberg)
+
+Options:
+1. Work without title (in non-regulated states)
+2. Get title recognition where required
+3. Join engineering chamber (Ingenieurkammer)
+
+Authority: State engineering chamber
+
+IT PROFESSIONALS
+----------------
+Not regulated - can work without recognition.
+
+BUT recognition helps for:
+- EU Blue Card application
+- Salary negotiations
+- Certain positions
+
+Check via anabin for university degrees.
+Vocational IT: IHK FOSA assessment
+
+TEACHERS
+--------
+Highly regulated, state-by-state process.
+
+Challenges:
+- Teaching is state-regulated
+- Subject combinations differ
+- German pedagogical requirements
+- May need additional training
+
+Authority: State education ministry (Kultusministerium)
+
+Many need:
+- German C1/C2
+- Additional pedagogical qualification
+- Probationary period
+
+VOCATIONAL QUALIFICATIONS
+-------------------------
+For non-academic qualifications (Ausbildung):
+
+Authority: Depends on profession
+- Crafts: Handwerkskammer (HWK)
+- Industry/Commerce: IHK FOSA
+- Medical/care: State authorities
+
+IHK FOSA:
+- Central recognition for 350+ professions
+- www.ihk-fosa.de
+- One-stop shop for many occupations
+
+RECOGNITION FOR IMMIGRATION
+---------------------------
+
+For Skilled Worker Visa:
+- Recognition usually required
+- Can start process from abroad
+- "Fast track" (beschleunigtes Fachkräfteverfahren):
+  - Employer-initiated
+  - Recognition included
+  - 4 months total process
+
+For EU Blue Card:
+- Degree must be recognized/comparable
+- Check anabin first
+- ZAB assessment if needed
+
+ZAB ASSESSMENT (Zeugnisbewertung)
+---------------------------------
+Central Office for Foreign Education (ZAB)
+- For university degrees
+- Evaluates foreign higher education
+- Issues "Statement of Comparability"
+
+Website: kmk.org/zab
+
+Process:
+1. Online application
+2. Upload documents
+3. Pay fee (~€200)
+4. Receive evaluation (3 months)
+
+NOT recognition for regulated professions!
+Just an assessment/comparison.
+
+DUAL QUALIFICATION RECOGNITION
+------------------------------
+For professions requiring both:
+- Educational qualification AND
+- Professional experience
+
+May need to demonstrate:
+- Formal training certificate
+- Practical experience proof
+- Reference letters
+
+DATABASES AND TOOLS
+-------------------
+
+BQ-Portal: bq-portal.de
+- Country and profession profiles
+- Comparison information
+- For recognition authorities
+
+Recognition Finder: anerkennung-in-deutschland.de
+- Most important tool!
+- Shows if recognition needed
+- Finds responsible authority
+- Available in 11 languages
+
+Anabin: anabin.kmk.org
+- Educational institutions database
+- Degree comparisons
+- Free to use
+
+FUNDING SUPPORT
+---------------
+
+Recognition Grant (Anerkennungszuschuss):
+- Up to €600 for recognition costs
+- For people already in Germany
+- Apply through IQ Network
+
+Qualification programs:
+- IQ Network funded courses
+- Employment agency support (Agentur für Arbeit)
+- Job center support (Jobcenter)
+
+USEFUL CONTACTS
+---------------
+- Recognition Portal: www.anerkennung-in-deutschland.de
+- Recognition Hotline: +49 30 1815-1111
+- IQ Network: www.netzwerk-iq.de
+- ZAB: kmk.org/zab
+- IHK FOSA: www.ihk-fosa.de
+- Anabin: anabin.kmk.org
+- Make it in Germany: www.make-it-in-germany.com

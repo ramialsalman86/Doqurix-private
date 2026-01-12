@@ -1,0 +1,192 @@
+GERMAN VISA TYPES FOR NON-EU CITIZENS
+======================================
+Source: Federal Foreign Office (Auswärtiges Amt), BAMF
+Last Updated: January 2026
+
+OVERVIEW OF VISA CATEGORIES
+---------------------------
+Germany distinguishes between:
+1. Schengen Visa (short-stay, up to 90 days)
+2. National Visa (long-stay, more than 90 days)
+3. Residence Permits (issued in Germany)
+
+SCHENGEN VISA (TYPE C)
+----------------------
+Duration: Up to 90 days within 180-day period
+Purpose: Tourism, business visits, family visits, conferences
+
+Requirements:
+- Valid passport (at least 3 months beyond stay, issued within last 10 years)
+- Completed application form
+- Biometric photos
+- Travel insurance (minimum €30,000 coverage)
+- Proof of accommodation
+- Proof of financial means (€45-100 per day)
+- Flight itinerary
+- Purpose documentation
+
+Fee: €80 (adults), €40 (children 6-12), free (children under 6)
+Processing: 15 calendar days (can extend to 45 days)
+
+Visa-free countries: USA, Canada, Australia, Japan, South Korea, UK, etc.
+- Can enter for 90 days without visa
+- Cannot work without work permit
+
+NATIONAL VISA (TYPE D)
+----------------------
+For stays longer than 90 days. Must apply BEFORE entering Germany.
+
+Types of National Visas:
+
+1. EMPLOYMENT VISA (Visum zur Beschäftigung)
+   Requirements:
+   - Job offer from German employer
+   - Qualification recognition (if applicable)
+   - Federal Employment Agency approval (in most cases)
+   - Health insurance
+   Fee: €75
+
+2. EU BLUE CARD VISA
+   Requirements:
+   - University degree (recognized)
+   - Job offer with salary above threshold
+   - See separate Blue Card knowledge file
+   Fee: €75
+
+3. JOB SEEKER VISA (§ 20 AufenthG)
+   Purpose: 6 months to search for qualified employment
+   Requirements:
+   - University degree (recognized in Germany)
+   - Proof of financial means (~€11,000 or blocked account)
+   - Health insurance
+   - Accommodation proof
+   - CV and motivation letter
+   Validity: 6 months (non-extendable)
+   Cannot work: Only job searching allowed
+   Fee: €75
+
+4. STUDENT VISA (§ 16b AufenthG)
+   Purpose: Study at German university
+   Requirements:
+   - University admission letter (Zulassungsbescheid)
+   - Proof of financing (€11,208/year in blocked account - 2024 rate)
+   - Health insurance
+   - Language proficiency (depends on program)
+   - Secondary school leaving certificate
+   Validity: 1-2 years, renewable
+   Work allowed: 120 full days or 240 half days per year
+   Fee: €75
+
+5. LANGUAGE COURSE VISA (§ 16f AufenthG)
+   Purpose: Intensive German language course
+   Requirements:
+   - Course enrollment (minimum 18 hours/week)
+   - Financing proof
+   - Health insurance
+   Duration: Up to 12 months
+   Cannot work: No employment allowed
+   Fee: €75
+
+6. FAMILY REUNIFICATION VISA
+   
+   Spouse Visa (§ 28, 30 AufenthG):
+   Requirements:
+   - Valid marriage
+   - Spouse in Germany has valid residence permit
+   - Basic German (A1) - exceptions apply
+   - Adequate living space
+   - Financial security
+   
+   Child Visa (§ 32 AufenthG):
+   Requirements:
+   - Child under 18
+   - Both parents or parent with custody in Germany
+   - Adequate living space
+
+7. FREELANCE/SELF-EMPLOYMENT VISA (§ 21 AufenthG)
+   Requirements:
+   - Business plan
+   - Financing proof
+   - Evidence of economic interest or regional need
+   - Professional experience and qualifications
+   - Health insurance
+   Fee: €75
+
+8. VOLUNTEER VISA (§ 19e AufenthG)
+   Purpose: Voluntary service programs (FSJ, BFD, etc.)
+   Requirements:
+   - Agreement with recognized volunteer organization
+   - Age typically 18-26
+   - Pocket money provided by organization
+   Fee: €75
+
+RESIDENCE PERMITS (AUFENTHALTSTITEL)
+------------------------------------
+Issued in Germany by Ausländerbehörde, not embassies
+
+Types:
+1. Aufenthaltserlaubnis (Temporary Residence Permit)
+   - Purpose-bound (work, study, family)
+   - Usually 1-3 years, renewable
+
+2. Blaue Karte EU (EU Blue Card)
+   - For highly qualified workers
+   - Up to 4 years
+
+3. Niederlassungserlaubnis (Permanent Residence)
+   - Unlimited duration
+   - After 5 years with residence permit (or faster with Blue Card)
+   - Requirements:
+     * 60 months pension contributions
+     * Adequate German (B1)
+     * Adequate living space
+     * No criminal record
+     * Basic knowledge of German law and society
+
+4. Erlaubnis zum Daueraufenthalt-EU (EU Long-term Residence)
+   - Similar to Niederlassungserlaubnis
+   - Additional EU mobility rights
+   - After 5 years legal residence
+
+SPECIAL CATEGORIES
+------------------
+
+Skilled Worker Visa (Fachkräfteeinwanderungsgesetz):
+Since March 2020, expanded since November 2023
+- Vocational qualifications now accepted (not just university)
+- Recognition of foreign qualifications required
+- Experience-based immigration possible in certain cases
+
+Opportunity Card (Chancenkarte) - Since June 2024:
+Points-based system for job seekers without job offer
+Points for:
+- Qualification recognition
+- German language (A1/A2/B1/B2)
+- English language (B2/C1)
+- Professional experience
+- Age (under 35)
+- Previous Germany stay
+Minimum: 6 points required
+Validity: 1 year
+Work allowed: 20 hours/week in any job while searching
+
+VISA APPLICATION TIMELINE
+-------------------------
+Recommended timeline before planned arrival:
+- 3-6 months: Gather documents
+- 3 months: Schedule visa appointment at embassy
+- 2 months: Submit application
+- 1-2 months: Processing
+- 2 weeks: Receive visa
+
+Peak times (longer processing):
+- July-September
+- Before university semesters
+
+IMPORTANT WEBSITES
+------------------
+- German Embassy/Consulate: www.germany.info
+- Visa appointments: Use embassy website or videx-national.diplo.de
+- BAMF: www.bamf.de
+- Make it in Germany: www.make-it-in-germany.com
+- Federal Foreign Office: www.auswaertiges-amt.de

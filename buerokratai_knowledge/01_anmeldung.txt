@@ -1,0 +1,108 @@
+ANMELDUNG (ADDRESS REGISTRATION) IN GERMANY
+============================================
+Source: Official German Government (service.berlin.de, bürgeramt.de)
+Last Updated: January 2026
+
+WHAT IS ANMELDUNG?
+------------------
+Anmeldung is the mandatory registration of your residence address in Germany. 
+By German law (Bundesmeldegesetz - BMG), everyone who moves to Germany or changes 
+their address within Germany MUST register within 14 days of moving in.
+
+LEGAL REQUIREMENT
+-----------------
+- Deadline: Within 14 DAYS of moving into your new address
+- Penalty for late registration: Fine up to €1,000 (in practice often €10-50)
+- Legal basis: § 17 Bundesmeldegesetz (BMG)
+
+WHO MUST REGISTER?
+------------------
+- All German citizens moving to a new address
+- All foreign nationals staying in Germany longer than 3 months
+- EU/EEA citizens planning to stay longer than 3 months
+- Non-EU citizens with any type of visa or residence permit
+
+EXEMPTIONS
+----------
+- Tourists staying less than 3 months (90 days)
+- Business travelers on short trips
+- People staying in hotels (hotel does registration)
+
+WHERE TO REGISTER
+-----------------
+- Bürgeramt (Citizens' Office) / Einwohnermeldeamt
+- You must register at the Bürgeramt responsible for your district
+- Appointment usually required (online booking)
+
+REQUIRED DOCUMENTS
+------------------
+1. Valid passport or national ID card (EU citizens)
+2. Anmeldeformular (registration form) - available at Bürgeramt or online
+3. Wohnungsgeberbestätigung (landlord confirmation)
+   - This is MANDATORY since November 2015
+   - Your landlord must provide this within 2 weeks of move-in
+   - Contains: landlord name, address of apartment, move-in date, your name
+4. Rental contract (Mietvertrag) - recommended but not always required
+5. Marriage certificate (if registering spouse)
+6. Birth certificates (if registering children)
+
+WOHNUNGSGEBERBESTÄTIGUNG (LANDLORD CONFIRMATION)
+------------------------------------------------
+Legal requirement since 01.11.2015 (§19 BMG)
+Must contain:
+- Name and address of the landlord (Wohnungsgeber)
+- Address of the apartment
+- Date of move-in (Einzugsdatum)
+- Names of all persons moving in
+- Landlord's signature
+
+If landlord refuses to provide:
+- Landlords are legally obligated to provide this
+- Refusal can result in fine up to €1,000 for landlord
+- Contact Bürgeramt if landlord refuses
+
+COST
+----
+- Anmeldung itself: FREE (kostenlos)
+- Meldebescheinigung (registration certificate): €5-15 depending on city
+
+AFTER REGISTRATION - WHAT YOU RECEIVE
+-------------------------------------
+1. Anmeldebestätigung (registration confirmation) - given immediately
+2. Meldebescheinigung (registration certificate) - request separately if needed
+3. Your Tax ID (Steuer-ID) will be sent by mail within 2-4 weeks
+   - Sent automatically to first-time registrants in Germany
+   - Goes to your registered address
+
+IMPORTANT NOTES
+---------------
+- Keep your Anmeldebestätigung safe - you need it for many things:
+  * Bank account opening
+  * Employment contracts
+  * Health insurance registration
+  * Residence permit applications
+  * Driver's license conversion
+
+- If you move within Germany, you must do Ummeldung (re-registration) within 14 days
+- If you leave Germany permanently, you must do Abmeldung (de-registration)
+
+COMMON MISTAKES TO AVOID
+------------------------
+1. Missing the 14-day deadline
+2. Not having Wohnungsgeberbestätigung
+3. Registering at wrong Bürgeramt (must be your district)
+4. Not booking appointment in advance (long wait times)
+
+CITY-SPECIFIC INFORMATION
+-------------------------
+Berlin: Appointments very difficult to get - book weeks in advance
+Munich: Multiple Kreisverwaltungsreferat (KVR) locations
+Frankfurt: Can sometimes get same-day appointments
+Hamburg: Kundenzentrum in each district
+
+ONLINE RESOURCES (OFFICIAL)
+---------------------------
+- Federal information: www.bmi.bund.de
+- Berlin: service.berlin.de
+- Munich: www.muenchen.de/rathaus/Stadtverwaltung/Kreisverwaltungsreferat
+- Hamburg: www.hamburg.de/einwohner

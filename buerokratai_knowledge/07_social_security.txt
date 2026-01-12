@@ -1,0 +1,227 @@
+SOCIAL SECURITY IN GERMANY (SOZIALVERSICHERUNG)
+================================================
+Source: Deutsche Rentenversicherung, Bundesagentur für Arbeit
+Last Updated: January 2026
+
+OVERVIEW - THE 5 PILLARS
+------------------------
+German social security consists of 5 mandatory insurances:
+
+1. Health Insurance (Krankenversicherung)
+2. Pension Insurance (Rentenversicherung)
+3. Unemployment Insurance (Arbeitslosenversicherung)
+4. Long-term Care Insurance (Pflegeversicherung)
+5. Accident Insurance (Unfallversicherung)
+
+Employees contribute to all 5 (except accident - paid by employer)
+Self-employed have different rules
+
+CONTRIBUTION RATES 2024/2025
+----------------------------
+(Split 50/50 between employer and employee, except where noted)
+
+Insurance Type          | Total Rate | Employee | Employer
+------------------------|------------|----------|----------
+Health (GKV)            | ~15.9%     | ~7.95%   | ~7.95%
+Pension                 | 18.6%      | 9.3%     | 9.3%
+Unemployment            | 2.6%       | 1.3%     | 1.3%
+Long-term Care          | 3.4%       | 1.7%*    | 1.7%
+Accident                | ~1.3%      | 0%       | 100%
+
+*Long-term care: Additional 0.6% for childless employees over 23
+
+CONTRIBUTION CEILINGS 2024
+--------------------------
+Beitragsbemessungsgrenze (assessment ceiling):
+
+Health/Long-term Care:
+- West & East Germany: €62,100/year (€5,175/month)
+
+Pension/Unemployment:
+- West Germany: €90,600/year (€7,550/month)
+- East Germany: €89,400/year (€7,450/month)
+
+Income above these limits is not subject to contributions
+
+SOZIALVERSICHERUNGSAUSWEIS (SOCIAL SECURITY CARD)
+-------------------------------------------------
+What is it?
+- Official document with your Social Security Number
+- Issued by Deutsche Rentenversicherung
+- 12-digit number (Sozialversicherungsnummer)
+- Format: XX DDMMYY X XXXX (includes birthdate)
+
+When do you get it?
+- Automatically when starting first job in Germany
+- Employer triggers the process
+- Arrives by mail within 4-6 weeks
+
+Why do you need it?
+- Required for every job
+- Employer needs number to register you
+- Proof of pension contributions
+
+Lost your card?
+- Request replacement from Rentenversicherung
+- Online: www.deutsche-rentenversicherung.de
+- Free of charge
+
+PENSION INSURANCE (RENTENVERSICHERUNG)
+--------------------------------------
+Who pays?
+- All employees (Pflichtversichert)
+- Some self-employed (certain professions)
+- Voluntary for others
+
+Contribution: 18.6% (9.3% each employer/employee)
+
+What you get:
+- Old-age pension (Altersrente) at retirement age
+- Disability pension (Erwerbsminderungsrente)
+- Survivor's pension for dependents
+- Rehabilitation services
+
+Retirement age:
+- Currently transitioning to 67 (by birth year)
+- Born 1964 or later: 67 years
+- Early retirement possible with deductions
+
+Minimum for pension:
+- 5 years of contributions (Wartezeit) for basic pension
+- 35 years for early retirement options
+- 45 years for pension without deductions
+
+For foreigners:
+- Contributions count toward pension
+- Pension can be paid abroad (most countries)
+- May transfer to home country pension system (some agreements)
+- Request refund if leaving with less than 5 years? Complex rules
+
+UNEMPLOYMENT INSURANCE (ARBEITSLOSENVERSICHERUNG)
+-------------------------------------------------
+Who pays?
+- All employees
+- Contribution: 2.6% (1.3% each)
+
+To receive benefits (Arbeitslosengeld I):
+- Must have worked 12 months in past 30 months
+- Must be registered as unemployed at Agentur für Arbeit
+- Must be available for work
+- Must actively seek employment
+
+Benefit amount:
+- 60% of previous net salary (without children)
+- 67% of previous net salary (with children)
+- Maximum ~€3,000/month
+
+Duration:
+- Depends on contribution period and age
+- 6-12 months for most people
+- Up to 24 months for older workers
+
+Arbeitslosengeld II (Bürgergeld):
+- For those not eligible for ALG I
+- Basic social welfare
+- ~€563/month single person (2024) + housing
+- Means-tested
+
+LONG-TERM CARE INSURANCE (PFLEGEVERSICHERUNG)
+---------------------------------------------
+Who pays?
+- All employees with health insurance
+- Contribution: 3.4% (1.7% each)
+- Additional 0.6% for childless employees over 23
+
+What it covers:
+- Home care services
+- Nursing home costs (partial)
+- Care for disabled family members
+- Cash benefits for family caregivers
+
+Care levels (Pflegegrade):
+- Grade 1-5 based on care needs
+- Assessment by MDK (Medical Service)
+- Higher grade = more benefits
+
+ACCIDENT INSURANCE (UNFALLVERSICHERUNG)
+---------------------------------------
+Who pays?
+- 100% employer (not deducted from salary)
+- Contribution: ~1.3% average
+
+What it covers:
+- Work-related accidents
+- Commute accidents (to/from work)
+- Occupational diseases
+- Rehabilitation
+- Disability pension if permanent injury
+
+Provider:
+- Berufsgenossenschaft (professional associations)
+- Different BGs for different industries
+
+MINI-JOB (GERINGFÜGIGE BESCHÄFTIGUNG)
+-------------------------------------
+What is it?
+- Employment earning up to €538/month (2024)
+- Also called €538-Job or Minijob
+
+Social security for Mini-Jobs:
+- No employee health insurance contribution
+- No unemployment insurance
+- Pension: Optional opt-out (Befreiung)
+- Employer pays flat rates
+
+Midi-Job (€538.01 - €2,000/month):
+- Reduced employee contributions
+- Full employer contributions
+- Sliding scale (Gleitzone)
+
+SELF-EMPLOYED (SELBSTSTÄNDIGE)
+------------------------------
+Social security for self-employed:
+
+Mandatory:
+- Health insurance (GKV or PKV)
+- Long-term care insurance
+- Some professions: Pension (artists, journalists, etc.)
+
+Voluntary:
+- Pension insurance
+- Unemployment insurance (special conditions)
+
+No employer contribution - you pay everything!
+
+WORKING STUDENTS (WERKSTUDENTEN)
+--------------------------------
+Special rules for enrolled students:
+- Working during semester: max 20 hours/week
+- Exempt from unemployment, health, care insurance
+- Only pension insurance applies
+- During semester breaks: full-time allowed
+
+INTERNATIONAL AGREEMENTS
+------------------------
+Germany has social security agreements with many countries:
+- EU/EEA: Full coordination of benefits
+- USA, Turkey, many others: Bilateral agreements
+- Coverage periods may be combined
+
+For EU citizens:
+- Periods in other EU countries count
+- No gap in coverage when moving
+- Request A1 form for posted workers
+
+IMPORTANT DOCUMENTS
+-------------------
+- Sozialversicherungsausweis: Social security card
+- Lohnabrechnung: Pay slip showing contributions
+- Renteninformation: Annual pension statement
+- Jahresmeldung: Annual employer report
+
+USEFUL CONTACTS
+---------------
+- Rentenversicherung: www.deutsche-rentenversicherung.de
+- Arbeitsagentur: www.arbeitsagentur.de
+- GKV: Your health insurance provider
+- Berufsgenossenschaft: Depends on industry

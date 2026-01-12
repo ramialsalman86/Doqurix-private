@@ -1,0 +1,165 @@
+EU BLUE CARD (BLAUE KARTE EU) - GERMANY
+========================================
+Source: Federal Office for Migration and Refugees (BAMF), Ausländerbehörde
+Last Updated: January 2026
+
+WHAT IS THE EU BLUE CARD?
+-------------------------
+The EU Blue Card is a residence permit for highly qualified non-EU workers.
+It allows you to live and work in Germany and provides a fast track to 
+permanent residence and EU mobility.
+
+Legal basis: § 18g Aufenthaltsgesetz (AufenthG) - Residence Act
+
+WHO IS ELIGIBLE?
+----------------
+1. Non-EU/EEA citizens
+2. Must have a recognized university degree:
+   - German degree, OR
+   - Foreign degree recognized as equivalent (check anabin.de database)
+   - Or comparable qualified professional experience (minimum 3 years in IT sector)
+
+3. Must have a job offer or employment contract in Germany
+4. Job must match your qualification (relevant to your degree)
+
+SALARY REQUIREMENTS 2025/2026
+-----------------------------
+Standard salary threshold: €45,300 gross per year (2025)
+- This threshold is 50% of the annual contribution ceiling for pension insurance
+- Adjusted annually
+
+Shortage occupation threshold: €41,041.80 gross per year (2025)
+- Lower threshold for jobs in shortage occupations:
+  * IT specialists
+  * Engineers
+  * Natural scientists
+  * Mathematicians
+  * Medical doctors (except dentists)
+  * Academic healthcare professionals
+
+Note: Check current thresholds at bamf.de as they change annually
+
+REQUIRED DOCUMENTS
+------------------
+1. Valid passport (valid for at least 3 months beyond visa validity)
+2. Biometric passport photos (35x45mm)
+3. Completed application form (Antrag auf Erteilung eines Aufenthaltstitels)
+4. Proof of university degree:
+   - Original degree certificate
+   - Transcript
+   - Recognition/evaluation from anabin.de or KMK (if foreign degree)
+5. Employment contract or binding job offer showing:
+   - Job title and description
+   - Gross annual salary
+   - Start date
+   - Working hours (usually full-time required)
+6. Health insurance proof:
+   - German statutory health insurance, OR
+   - Private health insurance meeting German requirements
+7. Proof of address (Meldebescheinigung if already in Germany)
+8. Previous residence permits (if applicable)
+9. CV/Resume
+
+FEES
+----
+- First issuance: €100
+- Extension: €93
+- Permanent residence after Blue Card: €113
+
+PROCESSING TIME
+---------------
+- If applying from within Germany: 4-12 weeks
+- If applying at German embassy abroad: 2-6 weeks for visa, then Blue Card in Germany
+- Fast-track (§ 81a AufenthG): Can be expedited
+
+VALIDITY
+--------
+- Initially issued for 4 years
+- If employment contract is shorter: Blue Card valid for contract duration + 3 months
+- Renewable
+
+PATH TO PERMANENT RESIDENCE
+---------------------------
+Blue Card holders can get permanent residence (Niederlassungserlaubnis) faster:
+
+After 33 months with Blue Card + basic German (A1):
+- Niederlassungserlaubnis eligible
+
+After 21 months with Blue Card + German level B1:
+- Fast-track Niederlassungserlaubnis eligible
+
+Requirements for permanent residence:
+- Contributions to pension insurance for the required period
+- Adequate living space
+- Basic knowledge of German legal and social system
+- No criminal record
+
+JOB CHANGE RULES
+----------------
+First 12 months (restricted):
+- Must get approval from Ausländerbehörde before changing jobs
+- Approval usually granted if new job meets Blue Card requirements
+
+After 12 months (unrestricted):
+- Can change jobs freely within Blue Card conditions
+- No approval needed, but must notify Ausländerbehörde
+
+FAMILY REUNIFICATION
+--------------------
+Blue Card holders have privileged family reunification:
+- Spouse can join without German knowledge requirement
+- Spouse gets immediate work permit
+- Children under 18 can join
+- Faster processing than other visa categories
+
+EU MOBILITY
+-----------
+After 12 months with Blue Card:
+- Can move to another EU country for Blue Card employment
+- Simplified procedures
+- Some restrictions apply (country-specific)
+
+COMPARISON: BLUE CARD VS. REGULAR WORK VISA
+-------------------------------------------
+Blue Card advantages:
+✓ Faster path to permanent residence (21-33 months vs. 60 months)
+✓ Better family reunification rules
+✓ EU-wide mobility rights
+✓ No labor market test required
+✓ More prestigious status
+
+Regular work visa (§ 18a/b AufenthG):
+- No minimum salary requirement
+- More flexible job requirements
+- Longer path to permanent residence
+- No EU mobility rights
+
+APPLICATION PROCESS
+-------------------
+If outside Germany:
+1. Apply for Blue Card visa at German embassy/consulate
+2. Receive visa (valid 6 months)
+3. Enter Germany
+4. Register address (Anmeldung)
+5. Apply for Blue Card at Ausländerbehörde
+6. Receive Blue Card
+
+If already in Germany with valid residence permit:
+1. Book appointment at Ausländerbehörde
+2. Submit application with documents
+3. Receive Blue Card (or fiction certificate while processing)
+
+IMPORTANT CONTACTS
+------------------
+- BAMF: www.bamf.de
+- Anabin (degree recognition): anabin.kmk.org
+- Make it in Germany: www.make-it-in-germany.com
+- Ausländerbehörde: Check your city's website
+
+COMMON REJECTION REASONS
+------------------------
+1. Salary below threshold
+2. Degree not recognized
+3. Job not matching qualification
+4. Missing documents
+5. Health insurance not meeting requirements
