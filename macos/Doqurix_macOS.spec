@@ -35,19 +35,36 @@ venv_path = PROJECT_ROOT / 'venv' / 'lib' / PY_VER / 'site-packages'
 
 # ----------------------------------------------------------------------------
 # Data files (knowledge bases, modules, license, web app)
-# Models are NOT bundled - they are downloaded on first run (~1GB).
-# Source paths must be absolute so PyInstaller doesn't look inside macos/.
+#
+# - Models are NOT bundled - they are downloaded on first run (~1GB).
+# - The `data/` directory is NOT bundled either: main.py creates it at runtime
+#   under the user's home dir (~/Doqurix/data on macOS, %LOCALAPPDATA%\Doqurix
+#   on Windows), so bundling an empty `data/` would have no effect anyway.
+# - Each entry is validated below; missing optional files are skipped with a
+#   warning instead of aborting the build.
 # ----------------------------------------------------------------------------
-datas = [
-    (p('data'),                  'data'),
-    (p('tax_knowledge'),         'tax_knowledge'),
-    (p('buerokratai_knowledge'), 'buerokratai_knowledge'),
-    (p('ecommerce_agent.py'),    '.'),
-    (p('buerokratai_agent.py'),  '.'),
-    (p('bottle_app.py'),         '.'),
-    (p('LICENSE.txt'),           '.'),
-    (p('README.txt'),            '.'),
+_candidate_datas = [
+    # (source path relative to project root, destination inside bundle, required?)
+    ('tax_knowledge',         'tax_knowledge',         True),
+    ('buerokratai_knowledge', 'buerokratai_knowledge', True),
+    ('ecommerce_agent.py',    '.',                     True),
+    ('buerokratai_agent.py',  '.',                     True),
+    ('bottle_app.py',         '.',                     True),
+    ('LICENSE.txt',           '.',                     False),
+    ('README.txt',            '.',                     False),
 ]
+
+datas = []
+for _src_rel, _dest, _required in _candidate_datas:
+    _src_abs = PROJECT_ROOT / _src_rel
+    if _src_abs.exists():
+        datas.append((str(_src_abs), _dest))
+        print(f"[spec] + data: {_src_rel} -> {_dest}")
+    else:
+        msg = f"[spec] data path missing: {_src_abs}"
+        if _required:
+            raise FileNotFoundError(msg)
+        print(f"WARNING: {msg} (optional, skipped)")
 
 binaries = []
 
