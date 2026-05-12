@@ -18,8 +18,15 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules, collect_dat
 # ----------------------------------------------------------------------------
 # Paths
 # ----------------------------------------------------------------------------
-# Spec is invoked from the project root, so relative paths resolve there.
-PROJECT_ROOT = Path(os.getcwd())
+# PyInstaller resolves relative paths in a .spec file relative to the spec's
+# own directory (NOT the cwd). Since this spec lives in macos/, we anchor
+# everything to the project root (one level up).
+SPEC_DIR = Path(os.path.dirname(os.path.abspath(SPEC)))  # type: ignore[name-defined]  # SPEC is injected by PyInstaller
+PROJECT_ROOT = SPEC_DIR.parent
+
+def p(rel: str) -> str:
+    """Resolve a path relative to the project root, as an absolute string."""
+    return str((PROJECT_ROOT / rel).resolve())
 
 # Detect the active Python's site-packages for venv-relative file lookups.
 # On macOS, the path is venv/lib/pythonX.Y/site-packages
@@ -29,16 +36,17 @@ venv_path = PROJECT_ROOT / 'venv' / 'lib' / PY_VER / 'site-packages'
 # ----------------------------------------------------------------------------
 # Data files (knowledge bases, modules, license, web app)
 # Models are NOT bundled - they are downloaded on first run (~1GB).
+# Source paths must be absolute so PyInstaller doesn't look inside macos/.
 # ----------------------------------------------------------------------------
 datas = [
-    ('data', 'data'),
-    ('tax_knowledge', 'tax_knowledge'),
-    ('buerokratai_knowledge', 'buerokratai_knowledge'),
-    ('ecommerce_agent.py', '.'),
-    ('buerokratai_agent.py', '.'),
-    ('bottle_app.py', '.'),
-    ('LICENSE.txt', '.'),
-    ('README.txt', '.'),
+    (p('data'),                  'data'),
+    (p('tax_knowledge'),         'tax_knowledge'),
+    (p('buerokratai_knowledge'), 'buerokratai_knowledge'),
+    (p('ecommerce_agent.py'),    '.'),
+    (p('buerokratai_agent.py'),  '.'),
+    (p('bottle_app.py'),         '.'),
+    (p('LICENSE.txt'),           '.'),
+    (p('README.txt'),            '.'),
 ]
 
 binaries = []
@@ -287,14 +295,15 @@ excludes = [
 # ----------------------------------------------------------------------------
 # Icon (use .icns if present, otherwise PyInstaller default)
 # ----------------------------------------------------------------------------
-icon_file = 'app_icon.icns' if Path('app_icon.icns').exists() else None
+_icns = PROJECT_ROOT / 'app_icon.icns'
+icon_file = str(_icns) if _icns.exists() else None
 
 # ----------------------------------------------------------------------------
 # Analysis / PYZ / EXE / COLLECT / BUNDLE
 # ----------------------------------------------------------------------------
 a = Analysis(
-    ['main.py'],
-    pathex=['.'],
+    [p('main.py')],
+    pathex=[str(PROJECT_ROOT)],
     binaries=binaries,
     datas=datas,
     hiddenimports=all_hiddenimports,
