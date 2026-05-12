@@ -1,0 +1,73 @@
+name: Build macOS DMG (Intel + Apple Silicon)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:  # Allow manual trigger from the Actions tab
+
+permissions:
+  contents: write  # Needed to create GitHub Releases on tag pushes
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }} DMG
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-13   # Intel x86_64
+            arch: intel
+            arch_label: x86_64
+          - runner: macos-14   # Apple Silicon arm64
+            arch: apple-silicon
+            arch_label: arm64
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Show build environment
+        run: |
+          uname -a
+          sw_vers
+          python3 --version
+          which python3
+
+      - name: Install create-dmg (nicer installer)
+        run: brew install create-dmg || true
+
+      - name: Make build script executable
+        run: chmod +x macos/build_macos.sh
+
+      - name: Run macOS build script
+        run: bash macos/build_macos.sh
+
+      - name: Rename DMG with arch suffix
+        run: |
+          cd installer_output
+          ORIG=$(ls *.dmg | head -n1)
+          NEW="${ORIG%.dmg}_${{ matrix.arch_label }}.dmg"
+          mv "$ORIG" "$NEW"
+          ls -lh
+
+      - name: Upload DMG as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Doqurix-${{ matrix.arch_label }}-dmg
+          path: installer_output/*.dmg
+          retention-days: 30
+
+      - name: Attach DMG to GitHub Release (only on tag push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer_output/*.dmg
+          generate_release_notes: true
