@@ -2,7 +2,7 @@
 # Python 3.9+ required
 
 # Core AI/ML Libraries
-llama-cpp-python>=0.2.0
+llama-cpp-python>=0.3.8,<0.3.23
 sentence-transformers>=2.2.2
 transformers>=4.35.0
 torch>=2.0.0

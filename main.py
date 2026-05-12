@@ -123,6 +123,7 @@ class AgentWorkflows:
         
         # Add citation validation prompt
         validation_prompt = f"""<|im_start|>system
+/no_think
 You are a citation validator. Review the answer and ensure all claims are properly supported by the provided sources.
 Add [VERIFY] tags to unsupported claims.<|im_end|>
 <|im_start|>user
@@ -217,6 +218,7 @@ Validate citations and mark unsupported claims.<|im_end|>
         context_summary = self._summarize_contexts(source_contexts)
         
         followup_prompt = f"""<|im_start|>system
+/no_think
 You are an intelligent research assistant. Based on the user's question and the answer provided, generate 3-4 insightful follow-up questions that would help the user explore the topic deeper. Focus on:
 1. Clarifying ambiguous points
 2. Exploring related concepts
@@ -294,6 +296,7 @@ Generate follow-up questions:<|im_end|>
         
         # Use LLM for intelligent analysis
         analysis_prompt = f"""<|im_start|>system
+/no_think
 You are an expert document analyst. Analyze the provided document collection and create a comprehensive, professional summary that identifies:
 1. Main topics and themes
 2. Document type and purpose (legal, technical, financial, etc.)
@@ -356,6 +359,7 @@ Provide a comprehensive analysis in a clear, professional format.<|im_end|>
         """Extract themes using LLM for better understanding"""
         try:
             theme_prompt = f"""<|im_start|>system
+/no_think
 Extract 5-7 main themes or topics from this text. Be specific and use full phrases, not single words.<|im_end|>
 <|im_start|>user
 Text: {text[:2000]}
@@ -1108,6 +1112,34 @@ class DownloadProgressWindow:
         self.eta_label.config(text="")
         self.window.update()
     
+    def set_stage(self, current, total, label=""):
+        """Determinate progress for staged loading (e.g. model init steps)"""
+        try:
+            self.progress_bar.stop()
+        except Exception:
+            pass
+        self.progress_bar.config(mode='determinate')
+        pct = (current / total) * 100 if total > 0 else 0
+        self.progress_var.set(pct)
+        self.detail_label.config(text=f"Step {current}/{total} • {pct:.0f}%")
+        if label:
+            self.eta_label.config(text=label)
+        self.window.update()
+
+    def set_determinate(self, current, total, label=""):
+        """Generic determinate progress with raw values (e.g. chunks processed)"""
+        try:
+            self.progress_bar.stop()
+        except Exception:
+            pass
+        self.progress_bar.config(mode='determinate')
+        pct = (current / total) * 100 if total > 0 else 0
+        self.progress_var.set(pct)
+        self.detail_label.config(text=f"{current}/{total} • {pct:.0f}%")
+        if label:
+            self.eta_label.config(text=label)
+        self.window.update()
+    
     def close(self):
         """Close the progress window"""
         self.window.grab_release()
@@ -1165,25 +1197,25 @@ class DocumentQAApp:
         try:
             self.update_status("🔄 Loading AI engine...")
             
-            # Check if any models need downloading
+            # Always show progress window so user sees model load progress
             needs_download = self.check_models_need_download()
-            
-            if needs_download:
-                # Show progress window on main thread
-                self.root.after(0, lambda: self.show_progress_window("First Time Setup"))
-                self.root.after(100, self._continue_loading)
-            else:
-                self._load_all_models()
+            title = "First Time Setup" if needs_download else "Loading AI Engine"
+            self.root.after(0, lambda t=title: self.show_progress_window(t))
+            self.root.after(100, self._continue_loading)
                 
         except Exception as e:
+            import traceback
+            err_msg = str(e)
+            print("=== Model load failure (outer) ===")
+            print(traceback.format_exc())
             self.root.after(0, self.close_progress_window)
-            self.update_status(f"❌ Error: {str(e)}")
-            self.root.after(0, lambda: messagebox.showerror("Error", 
-                f"Failed to load models:\n{str(e)}\n\nMake sure you have a good internet connection"))
+            self.update_status(f"❌ Error: {err_msg}")
+            self.root.after(0, lambda msg=err_msg: messagebox.showerror("Error",
+                f"Failed to load models:\n{msg}\n\nMake sure you have a good internet connection"))
     
     def check_models_need_download(self):
         """Check if any models need to be downloaded"""
-        model_path = self.models_dir / "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+        model_path = self.models_dir / "Qwen3-1.7B-Q4_K_M.gguf"
         
         # Check for the main GGUF model
         if not model_path.exists():
@@ -1206,11 +1238,25 @@ class DocumentQAApp:
     def _load_all_models(self):
         """Actually load all the models"""
         try:
-            self.init_llm()
-            self.init_embeddings()
-            self.init_reranker()
-            self.init_vector_db()
-            self.init_agent_workflows()
+            stages = [
+                ("🧠 Loading AI engine into memory...", self.init_llm),
+                ("📥 Loading search engine...", self.init_embeddings),
+                ("🔍 Loading reranker...", self.init_reranker),
+                ("📊 Initializing vector database...", self.init_vector_db),
+                ("🤖 Setting up AI agents...", self.init_agent_workflows),
+            ]
+            total = len(stages)
+            for i, (label, fn) in enumerate(stages):
+                if self.progress_window:
+                    self.root.after(0, lambda i=i, lbl=label:
+                        self.progress_window.set_stage(i, total, lbl))
+                fn()
+                if self.progress_window:
+                    self.root.after(0, lambda i=i, lbl=label:
+                        self.progress_window.set_stage(i + 1, total, lbl + " ✓"))
+            
+            # Restore previously uploaded documents into the listbox
+            self._restore_document_list()
             
             self.root.after(0, self.close_progress_window)
             self.models_loaded = True
@@ -1223,10 +1269,14 @@ class DocumentQAApp:
             if self.doc_listbox.size() > 0:
                 self.root.after(0, lambda: self.delete_btn.config(state='normal'))
         except Exception as e:
+            import traceback
+            err_msg = str(e)
+            print("=== Model load failure (_load_all_models) ===")
+            print(traceback.format_exc())
             self.root.after(0, self.close_progress_window)
-            self.update_status(f"❌ Error: {str(e)}")
-            self.root.after(0, lambda: messagebox.showerror("Error", 
-                f"Failed to load models:\n{str(e)}\n\nMake sure you have a good internet connection"))
+            self.update_status(f"❌ Error: {err_msg}")
+            self.root.after(0, lambda msg=err_msg: messagebox.showerror("Error",
+                f"Failed to load models:\n{msg}\n\nMake sure you have a good internet connection"))
     
     def download_with_progress(self, url, dest_path, description="Downloading..."):
         """Download a file with progress bar updates"""
@@ -1272,19 +1322,21 @@ class DocumentQAApp:
         self.update_status("📥 Checking AI model...")
         
         # Download quantized GGUF model from HuggingFace
-        model_path = self.models_dir / "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+        # Qwen3-1.7B-Instruct, Q4_K_M (~1.1 GB) - better reasoning than Qwen2.5-1.5B at same RAM
+        model_path = self.models_dir / "Qwen3-1.7B-Q4_K_M.gguf"
         
         if not model_path.exists():
             self.update_status("⬇️ Downloading AI model...")
             
             # Direct download URL from HuggingFace
-            model_url = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+            # Unsloth ships the full quant range for Qwen3-1.7B (the official Qwen repo only has Q8_0).
+            model_url = "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf"
             
             try:
                 self.download_with_progress(
                     url=model_url,
                     dest_path=model_path,
-                    description="Downloading language model (~1 GB)..."
+                    description="Downloading language model (~1.1 GB)..."
                 )
             except Exception as e:
                 self.update_status(f"Error downloading: {str(e)}")
@@ -1294,12 +1346,12 @@ class DocumentQAApp:
         if self.progress_window:
             self.root.after(0, lambda: self.progress_window.set_title("🧠 Loading AI Engine"))
             self.root.after(0, lambda: self.progress_window.set_status("Loading model into memory..."))
-            self.root.after(0, lambda: self.progress_window.set_indeterminate())
         
         # Load with llama.cpp (optimized for CPU with max performance)
+        # Qwen3 supports up to 32k context; 8k gives us room for long PDFs while keeping KV-cache RAM modest.
         self.llm = Llama(
             model_path=str(model_path),
-            n_ctx=3072,  # Increased context window
+            n_ctx=8192,
             n_threads=os.cpu_count() or 4,  # Use all CPU cores
             n_batch=512,  # Larger batch for faster processing
             n_gpu_layers=0,  # CPU only
@@ -1316,7 +1368,6 @@ class DocumentQAApp:
         if self.progress_window:
             self.root.after(0, lambda: self.progress_window.set_title("📥 Loading Search Engine"))
             self.root.after(0, lambda: self.progress_window.set_status("Downloading embedding model..."))
-            self.root.after(0, lambda: self.progress_window.set_indeterminate())
         
         # Using faster, smaller embedding model
         self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
@@ -1329,7 +1380,6 @@ class DocumentQAApp:
         if self.progress_window:
             self.root.after(0, lambda: self.progress_window.set_title("📥 Loading Ranking Engine"))
             self.root.after(0, lambda: self.progress_window.set_status("Downloading reranker model..."))
-            self.root.after(0, lambda: self.progress_window.set_indeterminate())
         
         # Using smaller, faster reranker
         self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
@@ -1342,7 +1392,6 @@ class DocumentQAApp:
         if self.progress_window:
             self.root.after(0, lambda: self.progress_window.set_title("📥 Initializing Database"))
             self.root.after(0, lambda: self.progress_window.set_status("Setting up vector database..."))
-            self.root.after(0, lambda: self.progress_window.set_indeterminate())
         
         self.chroma_client = chromadb.Client(Settings(
             persist_directory=str(self.vector_store_dir),
@@ -1420,10 +1469,11 @@ class DocumentQAApp:
                 with open(tax_file, 'r', encoding='utf-8') as f:
                     content = f.read()
                 
-                # Split into chunks (approximately 500 words each for better context)
+                # Chunks must fit MiniLM-L6 embedder's 256-token window.
+                # 200 words ≈ 260 tokens leaves slack for tokenizer overhead.
                 words = content.split()
-                chunk_size = 500
-                overlap = 50
+                chunk_size = 200
+                overlap = 40
                 
                 for i in range(0, len(words), chunk_size - overlap):
                     chunk_words = words[i:i + chunk_size]
@@ -1498,10 +1548,10 @@ class DocumentQAApp:
                 with open(knowledge_file, 'r', encoding='utf-8') as f:
                     content = f.read()
                 
-                # Split into chunks (approximately 500 words each for better context)
+                # Chunks must fit MiniLM-L6 embedder's 256-token window.
                 words = content.split()
-                chunk_size = 500
-                overlap = 50
+                chunk_size = 200
+                overlap = 40
                 
                 for i in range(0, len(words), chunk_size - overlap):
                     chunk_words = words[i:i + chunk_size]
@@ -2471,6 +2521,34 @@ Contact: sales@doqurix.com"""
         count = self.doc_listbox.size()
         self.doc_count_label.config(text=f"{count} document{'s' if count != 1 else ''} loaded")
     
+    def _restore_document_list(self):
+        """Repopulate the document listbox from previously-persisted ChromaDB entries."""
+        try:
+            if not hasattr(self, 'collection') or self.collection is None:
+                return
+            data = self.collection.get()
+            metadatas = data.get('metadatas') or []
+            # Count chunks per source filename
+            counts = {}
+            for md in metadatas:
+                if not md:
+                    continue
+                src = md.get('source')
+                if src:
+                    counts[src] = counts.get(src, 0) + 1
+            if not counts:
+                return
+            def _populate():
+                self.doc_listbox.delete(0, 'end')
+                for fn, n in sorted(counts.items()):
+                    self.doc_listbox.insert('end', f"📄 {fn} ({n} chunks)")
+                self.update_doc_count()
+                if self.doc_listbox.size() > 0 and hasattr(self, 'delete_btn'):
+                    self.delete_btn.config(state='normal')
+            self.root.after(0, _populate)
+        except Exception as e:
+            print(f"[restore_document_list] {e}")
+    
     def upload_document(self):
         """Handle upload - supports multiple file selection"""
         if not self.models_loaded:
@@ -2500,8 +2578,18 @@ Contact: sales@doqurix.com"""
         try:
             filename = os.path.basename(file_path)
             self.update_status(f"📄 Processing {filename}...")
-            chunks = self.add_document(file_path)
             
+            # Show a progress window with live chunk-level values
+            self.root.after(0, lambda fn=filename: self.show_progress_window(f"📄 Processing {fn}"))
+            
+            def _cb(current, total, label):
+                if self.progress_window:
+                    self.root.after(0, lambda c=current, t=total, l=label:
+                        self.progress_window.set_determinate(c, t, l))
+            
+            chunks = self.add_document(file_path, progress_cb=_cb)
+            
+            self.root.after(0, self.close_progress_window)
             self.root.after(0, lambda: self.doc_listbox.insert('end', f"📄 {filename} ({chunks} chunks)"))
             self.root.after(0, self.update_doc_count)
             self.root.after(0, lambda: self.delete_btn.config(state='normal'))
@@ -2512,7 +2600,9 @@ Contact: sales@doqurix.com"""
                 self.root.after(0, lambda: messagebox.showinfo("Document Added", 
                     f"'{filename}' has been successfully uploaded.\n\nExtracted {chunks} text chunks for analysis."))
         except Exception as e:
-            self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to process document:\n{str(e)}"))
+            self.root.after(0, self.close_progress_window)
+            err = str(e)
+            self.root.after(0, lambda m=err: messagebox.showerror("Error", f"Failed to process document:\n{m}"))
     
     def delete_document(self):
         """Delete selected document from the list and vector store"""
@@ -2569,11 +2659,13 @@ Contact: sales@doqurix.com"""
         except Exception as e:
             messagebox.showerror("Error", f"Failed to remove document:\n{str(e)}")
 
-    def add_document(self, file_path):
-        """Add document - supports PDF and DOCX"""
+    def add_document(self, file_path, progress_cb=None):
+        """Add document - supports PDF and DOCX. progress_cb(current, total, label) optional."""
         # Detect file type and extract text accordingly
         file_ext = os.path.splitext(file_path)[1].lower()
         
+        if progress_cb:
+            progress_cb(0, 1, "Extracting text...")
         if file_ext == '.pdf':
             text = self.extract_text_from_pdf(file_path)
         elif file_ext in ['.docx', '.doc']:
@@ -2581,7 +2673,10 @@ Contact: sales@doqurix.com"""
         else:
             raise ValueError(f"Unsupported file type: {file_ext}")
         
+        if progress_cb:
+            progress_cb(0, 1, "Chunking text...")
         chunks = self.smart_chunk_text(text)
+        total = len(chunks)
         
         for i, chunk in enumerate(chunks):
             embedding = self.embedder.encode(chunk).tolist()
@@ -2595,6 +2690,8 @@ Contact: sales@doqurix.com"""
                 }],
                 ids=[f"{file_path}_{i}"]
             )
+            if progress_cb and (i % 2 == 0 or i == total - 1):
+                progress_cb(i + 1, total, f"Embedding chunks ({i + 1}/{total})")
         
         self.rebuild_bm25_index()
         return len(chunks)
@@ -2696,8 +2793,12 @@ Contact: sales@doqurix.com"""
         
         return '\n'.join(table_data)
     
-    def smart_chunk_text(self, text, chunk_size=600, overlap=200):
-        """Smart chunking"""
+    def smart_chunk_text(self, text, chunk_size=200, overlap=40):
+        """Smart chunking.
+
+        Defaults sized for the MiniLM-L6 embedder (256-token cap).
+        200 words ≈ 260 tokens with sentence-boundary slack.
+        """
         text = re.sub(r'\s+', ' ', text).strip()
         sentences = re.split(r'(?<=[.!?])\s+', text)
         
@@ -2908,6 +3009,10 @@ Contact: sales@doqurix.com"""
             system_prompt = f"""You are a professional assistant providing clear, concise answers.
 {lang_instruction}
 Write in complete sentences and paragraphs, not bullet points or lists."""
+
+        # Prepend /no_think to disable Qwen3 thinking-mode output (<think> blocks).
+        # Harmless for non-Qwen3 models since it's just a token they ignore.
+        system_prompt = f"/no_think\n{system_prompt}"
         
         if mode == 'summarize':
             prompt = f"""<|im_start|>system
@@ -2948,6 +3053,8 @@ Answer:<|im_end|>
         )
         
         answer = output['choices'][0]['text'].strip()
+        # Safety net: strip any leftover <think>...</think> blocks if /no_think didn't suppress them.
+        answer = re.sub(r'<think>.*?</think>\s*', '', answer, flags=re.DOTALL).strip()
         return answer
     
     def display_contexts(self, contexts, question):
