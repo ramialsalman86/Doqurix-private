@@ -660,7 +660,8 @@ class LicenseManager:
     
     # Secret key for license generation (keep this secure!)
     _SECRET_KEY = "DQX2025-UNIPER-SECURE-KEY"
-    _TRIAL_DAYS = 30
+    # Free trial duration: 1 year (was 30 days).
+    _TRIAL_DAYS = 365
     
     # Valid license keys (pre-generated)
     # Format: DQRX-XXXX-XXXX-XXXX
@@ -769,9 +770,30 @@ class LicenseManager:
         
         # Check against valid keys
         if key in self.VALID_KEYS:
+            # Look at any pre-existing license so we can decide whether this
+            # is a NEW activation/renewal (date should reset to today) or a
+            # no-op re-entry of the already-active key (keep the original
+            # date so a reinstall tomorrow shows one fewer day, not a fresh
+            # 365). Only a *different* valid key counts as a renewal.
+            prev_key = None
+            try:
+                if self.license_file.exists():
+                    with open(self.license_file, 'r') as f:
+                        prev = json.load(f)
+                    if prev.get('key') in self.VALID_KEYS:
+                        prev_key = prev.get('key')
+            except Exception:
+                prev_key = None
+
+            if prev_key == key:
+                # Same key already active — don't bump activation_date.
+                return True, "This key is already active. No renewal applied — your existing days are preserved."
+
             self._save_license(key)
+            if prev_key is not None:
+                return True, "License renewed with a new key — 365 days from today."
             return True, "License activated successfully! Thank you for your purchase."
-        
+
         return False, "Invalid license key. Please check and try again."
     
     def _save_license(self, key):
@@ -3894,42 +3916,310 @@ Formatieren Sie Ihre Antwort benutzerfreundlich mit Aufzählungspunkten und klar
         self.root.mainloop()
 
 
-def check_license_and_run():
-    """Check license/trial status before running the application"""
-    # Initialize license manager
-    license_manager = LicenseManager()
-    
-    # Get overall status
-    can_run, is_trial, days_remaining, message = license_manager.get_status()
-    
-    if can_run:
-        # Either licensed or valid trial - run the app
-        trial_info = (is_trial, days_remaining)
-        app = DocumentQAApp(trial_info=trial_info)
-        app.run()
-    else:
-        # Trial expired or no license - show license dialog
-        # Create a hidden root window for the dialog
-        root = tk.Tk()
-        root.withdraw()  # Hide the main window
-        
-        # Show license dialog
-        dialog = LicenseDialog(root, license_manager, days_remaining=0, is_expired=True)
-        result = dialog.show()
-        
-        if result:
-            # License activated or user chose to continue (shouldn't happen if expired)
-            root.destroy()
-            can_run, is_trial, days_remaining, message = license_manager.get_status()
-            if can_run:
-                trial_info = (is_trial, days_remaining)
-                app = DocumentQAApp(trial_info=trial_info)
-                app.run()
+# ============================================================================
+# HEADLESS WEB-ONLY LAUNCHER
+# ----------------------------------------------------------------------------
+# The desktop Tkinter GUI is no longer started. Instead we boot the Bottle web
+# app directly. Model-loading progress is exposed to the browser via a JSON
+# endpoint and a startup overlay page rendered until everything is ready.
+# A "Stop App" control in the web UI calls /api/shutdown to terminate the
+# server cleanly. The launcher also registers itself for auto-start on login
+# so the web app is available again after every reboot.
+# ============================================================================
+
+
+class HeadlessLoader:
+    """Loads all AI models without any Tkinter dependency and reports
+    progress into a shared dict that the web UI polls."""
+
+    def __init__(self, progress_state):
+        self.progress = progress_state
+        self.app_dir = Path(__file__).parent
+
+        appdata = Path(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')))
+        self.user_data_dir = appdata / "Doqurix"
+        self.user_data_dir.mkdir(exist_ok=True)
+        self.models_dir = self.user_data_dir / "models"
+        self.data_dir = self.user_data_dir / "data"
+        self.vector_store_dir = self.data_dir / "vector_store"
+        for d in (self.models_dir, self.data_dir, self.vector_store_dir):
+            d.mkdir(exist_ok=True)
+
+        # Public attributes consumed by bottle_app.init_models()
+        self.llm = None
+        self.embedder = None
+        self.reranker = None
+        self.chroma_client = None
+        self.collection = None
+        self.tax_collection = None
+        self.buerokratai_collection = None
+        self.agents = None
+
+    # ---- progress helpers -------------------------------------------------
+    def _set(self, **kwargs):
+        self.progress.update(kwargs)
+
+    def _stage(self, idx, total, label):
+        self._set(
+            stage_index=idx,
+            stage_total=total,
+            stage_label=label,
+            percent=(idx / total) * 100 if total else 0,
+            status=label,
+        )
+
+    # ---- downloads --------------------------------------------------------
+    def _download(self, url, dest_path, description):
+        self._set(title="Downloading AI Model", status=description,
+                  download_bytes=0, download_total=0)
+        with urllib.request.urlopen(url, timeout=30) as resp:
+            total = int(resp.headers.get('Content-Length', 0))
+            self._set(download_total=total)
+            downloaded = 0
+            chunk_size = 1024 * 1024
+            with open(dest_path, 'wb') as f:
+                while True:
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    self._set(
+                        download_bytes=downloaded,
+                        percent=(downloaded / total) * 100 if total else 0,
+                    )
+
+    # ---- model loading stages --------------------------------------------
+    def init_llm(self):
+        model_path = self.models_dir / "Qwen3-1.7B-Q4_K_M.gguf"
+        if not model_path.exists():
+            model_url = (
+                "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/"
+                "resolve/main/Qwen3-1.7B-Q4_K_M.gguf"
+            )
+            self._download(model_url, model_path,
+                           "Downloading language model (~1.1 GB)...")
+        self._set(status="Loading AI engine into memory...")
+        self.llm = Llama(
+            model_path=str(model_path),
+            n_ctx=8192,
+            n_threads=os.cpu_count() or 4,
+            n_batch=512,
+            n_gpu_layers=0,
+            verbose=False,
+            use_mlock=True,
+        )
+
+    def init_embeddings(self):
+        self._set(status="Loading search engine (embeddings)...")
+        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+
+    def init_reranker(self):
+        self._set(status="Loading reranker model...")
+        self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+
+    def init_vector_db(self):
+        self._set(status="Initializing vector database...")
+        # IMPORTANT: chromadb >= 0.4 made ``Client(Settings(persist_directory=…))``
+        # ephemeral. Use ``PersistentClient`` so uploaded documents survive
+        # browser refreshes AND process restarts (the explicit user requirement).
+        self.chroma_client = chromadb.PersistentClient(
+            path=str(self.vector_store_dir),
+            settings=Settings(anonymized_telemetry=False),
+        )
+        try:
+            self.collection = self.chroma_client.get_collection("documents")
+        except Exception:
+            self.collection = self.chroma_client.create_collection("documents")
+
+    def _load_knowledge_collection(self, name, folder, id_prefix, agent_tag, type_tag):
+        try:
+            coll = self.chroma_client.get_collection(name)
+            if len(coll.get()['documents']) > 0:
+                return coll
+        except Exception:
+            coll = self.chroma_client.create_collection(name)
+
+        knowledge_dir = self.app_dir / folder
+        if not knowledge_dir.exists():
+            return coll
+
+        all_chunks, all_ids, all_metas = [], [], []
+        chunk_id = 0
+        for kf in knowledge_dir.glob("*.txt"):
+            with open(kf, 'r', encoding='utf-8') as f:
+                content = f.read()
+            words = content.split()
+            chunk_size, overlap = 200, 40
+            for i in range(0, len(words), chunk_size - overlap):
+                chunk_text = ' '.join(words[i:i + chunk_size])
+                if len(chunk_text.strip()) > 100:
+                    all_chunks.append(chunk_text)
+                    all_ids.append(f"{id_prefix}_{chunk_id}")
+                    all_metas.append({'source': kf.name,
+                                      'type': type_tag, 'agent': agent_tag})
+                    chunk_id += 1
+        if all_chunks:
+            batch = 100
+            for i in range(0, len(all_chunks), batch):
+                embeddings = self.embedder.encode(all_chunks[i:i + batch]).tolist()
+                coll.add(
+                    documents=all_chunks[i:i + batch],
+                    embeddings=embeddings,
+                    metadatas=all_metas[i:i + batch],
+                    ids=all_ids[i:i + batch],
+                )
+        return coll
+
+    def init_agent_collections(self):
+        self._set(status="Loading specialized agent knowledge bases...")
+        self.tax_collection = self._load_knowledge_collection(
+            "tax_agent_germany", "tax_knowledge", "tax",
+            "tax_germany", "tax_knowledge")
+        self.buerokratai_collection = self._load_knowledge_collection(
+            "buerokratai_agent", "buerokratai_knowledge", "buerokratai",
+            "buerokratai_germany", "immigration_knowledge")
+
+    def init_agent_workflows(self):
+        self._set(status="Initializing AI agents...")
+        self.agents = AgentWorkflows(
+            llm=self.llm, embedder=self.embedder, reranker=self.reranker)
+
+    # ---- orchestration ----------------------------------------------------
+    def load_all(self):
+        try:
+            stages = [
+                ("Loading AI engine...", self.init_llm),
+                ("Loading search engine...", self.init_embeddings),
+                ("Loading reranker...", self.init_reranker),
+                ("Initializing vector database...", self.init_vector_db),
+                ("Loading agent knowledge bases...", self.init_agent_collections),
+                ("Setting up AI agents...", self.init_agent_workflows),
+            ]
+            total = len(stages)
+            self._set(ready=False, error=None,
+                      stage_total=total, title="Starting Doqurix",
+                      percent=0)
+            for i, (label, fn) in enumerate(stages):
+                self._stage(i, total, label)
+                fn()
+                self._stage(i + 1, total, label + " ✓")
+            self._set(ready=True, status="Ready", percent=100,
+                      title="Doqurix is ready")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._set(ready=False, error=str(e),
+                      status=f"Failed: {e}", title="Startup Failed")
+
+
+def register_autostart():
+    """Register the app to run on user login.
+
+    Windows: writes a Run key under HKCU. Best-effort; failures are ignored.
+    macOS/Linux: skipped (handled by installer in those environments).
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import winreg
+        # When frozen by PyInstaller use the launcher exe, otherwise launch
+        # python against this script so dev runs are also auto-started.
+        if getattr(sys, "frozen", False):
+            command = f'"{sys.executable}"'
         else:
-            # User chose to exit
-            root.destroy()
-            sys.exit(0)
+            command = f'"{sys.executable}" "{os.path.abspath(__file__)}"'
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, winreg.KEY_SET_VALUE,
+        )
+        try:
+            winreg.SetValueEx(key, "Doqurix", 0, winreg.REG_SZ, command)
+        finally:
+            winreg.CloseKey(key)
+    except Exception as e:
+        print(f"[autostart] could not register: {e}")
+
+
+def _ensure_license_or_exit():
+    """Validate trial/license without any Tk UI.
+
+    A first run automatically starts the 1-year free trial. If the trial is
+    expired or the data has been tampered with, an environment variable
+    DOQURIX_LICENSE_KEY can be supplied to activate a key headlessly.
+    Otherwise the launcher prints instructions and exits.
+    """
+    lm = LicenseManager()
+    can_run, is_trial, days_remaining, message = lm.get_status()
+    if can_run:
+        return lm, is_trial, days_remaining
+
+    # Try environment-based activation as a fallback (useful for IT rollouts).
+    env_key = os.environ.get("DOQURIX_LICENSE_KEY")
+    if env_key:
+        ok, msg = lm.validate_license_key(env_key)
+        print(f"[license] {msg}")
+        if ok:
+            can_run, is_trial, days_remaining, message = lm.get_status()
+            if can_run:
+                return lm, is_trial, days_remaining
+
+    print("=" * 60)
+    print("Doqurix license check failed:")
+    print(f"  {message}")
+    print()
+    print("Set the DOQURIX_LICENSE_KEY environment variable to a valid")
+    print("license key (format DQRX-XXXX-XXXX-XXXX) and relaunch the app.")
+    print("=" * 60)
+    sys.exit(1)
+
+
+def run_web_app():
+    """Headless entry point. Boots the Bottle web app."""
+    # 1. License gate (no GUI)
+    _ensure_license_or_exit()
+
+    # 2. Auto-start on next login (best-effort, runs every launch so the
+    #    Run key stays in sync if the executable path changes).
+    register_autostart()
+
+    # 3. Import bottle_app lazily so the module sees the latest globals.
+    app_dir = Path(__file__).parent
+    if str(app_dir) not in sys.path:
+        sys.path.insert(0, str(app_dir))
+    import bottle_app
+
+    # 4. Kick off model loading in the background.
+    loader = HeadlessLoader(bottle_app.STARTUP_STATE)
+
+    def _bootstrap():
+        loader.load_all()
+        if loader.progress.get("ready"):
+            try:
+                bottle_app.init_models(loader)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                bottle_app.STARTUP_STATE.update(
+                    ready=False, error=f"init_models failed: {e}")
+
+    threading.Thread(target=_bootstrap, daemon=True).start()
+
+    # 5. Open browser shortly after the server is up.
+    def _open_browser():
+        import webbrowser
+        time.sleep(1.5)
+        try:
+            webbrowser.open("http://localhost:8502")
+        except Exception:
+            pass
+    threading.Thread(target=_open_browser, daemon=True).start()
+
+    # 6. Run the web server (blocks until /api/shutdown is invoked).
+    print("Doqurix web app running at http://localhost:8502")
+    bottle_app.app.run(host="localhost", port=8502, quiet=True, debug=False)
 
 
 if __name__ == "__main__":
-    check_license_and_run()
+    run_web_app()

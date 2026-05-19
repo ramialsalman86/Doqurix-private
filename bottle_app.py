@@ -6,11 +6,12 @@ A modern web interface for document Q&A with conversation history
 from bottle import Bottle, request, response, static_file, template, abort
 import os
 import sys
+import time
+import threading
 from pathlib import Path
 import json
 import base64
 import io
-import threading
 import re
 try:
     from docx import Document
@@ -37,6 +38,90 @@ bm25 = None
 bm25_corpus = []
 agents = None  # For insights agent
 
+# ---------------------------------------------------------------------------
+# Startup progress + lifecycle state (used by the headless web launcher)
+# ---------------------------------------------------------------------------
+STARTUP_STATE = {
+    "ready": False,            # set True once all models are loaded
+    "error": None,             # string if startup failed
+    "title": "Starting Doqurix",
+    "status": "Booting...",
+    "stage_index": 0,
+    "stage_total": 6,
+    "stage_label": "",
+    "percent": 0,
+    "download_bytes": 0,
+    "download_total": 0,
+}
+
+# Loading page shown while models are initializing. Polls /api/startup-progress
+# and reloads the main UI once ready.
+LOADING_HTML = """
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"UTF-8\">
+    <title>Doqurix - Starting...</title>
+    <style>
+        body { margin:0; font-family:'Segoe UI',sans-serif;
+               background:#0f0f0f; color:#ececf1;
+               display:flex; align-items:center; justify-content:center;
+               height:100vh; }
+        .card { background:#1a1a1a; padding:36px 44px; border-radius:14px;
+                box-shadow:0 10px 40px rgba(0,0,0,.5);
+                width: 460px; max-width: 92vw; }
+        h1 { margin:0 0 6px 0; font-size:22px; }
+        .status { color:#b4b4b4; margin-bottom:18px; font-size:14px; }
+        .bar { background:#2a2a2a; border-radius:8px; overflow:hidden;
+               height:14px; }
+        .fill { background:linear-gradient(135deg,#10a37f 0%,#1bc9a0 100%);
+                height:100%; width:0%; transition:width .3s ease; }
+        .meta { margin-top:10px; font-size:12px; color:#6e6e80;
+                display:flex; justify-content:space-between; }
+        .err { color:#ff6b6b; margin-top:14px; font-size:13px; }
+    </style>
+</head>
+<body>
+    <div class=\"card\">
+        <h1 id=\"title\">Starting Doqurix</h1>
+        <div class=\"status\" id=\"status\">Booting...</div>
+        <div class=\"bar\"><div class=\"fill\" id=\"fill\"></div></div>
+        <div class=\"meta\">
+            <span id=\"stage\"></span>
+            <span id=\"pct\">0%</span>
+        </div>
+        <div class=\"err\" id=\"err\"></div>
+    </div>
+    <script>
+        function fmtMB(b){ return (b/1048576).toFixed(1) + ' MB'; }
+        async function poll(){
+            try {
+                const r = await fetch('/api/startup-progress');
+                const s = await r.json();
+                document.getElementById('title').textContent = s.title || 'Starting...';
+                document.getElementById('status').textContent = s.status || '';
+                document.getElementById('fill').style.width = (s.percent || 0) + '%';
+                document.getElementById('pct').textContent = Math.round(s.percent || 0) + '%';
+                let stage = '';
+                if (s.stage_total) stage = 'Step ' + s.stage_index + '/' + s.stage_total;
+                if (s.download_total) {
+                    stage = fmtMB(s.download_bytes) + ' / ' + fmtMB(s.download_total);
+                }
+                document.getElementById('stage').textContent = stage;
+                if (s.error) {
+                    document.getElementById('err').textContent = 'Error: ' + s.error;
+                    return;
+                }
+                if (s.ready) { window.location.href = '/'; return; }
+            } catch (e) {}
+            setTimeout(poll, 700);
+        }
+        poll();
+    </script>
+</body>
+</html>
+"""
+
 # Professional Modern UI - ChatGPT/Claude/Gemini Quality
 INDEX_HTML = """
 <!DOCTYPE html>
@@ -45,6 +130,15 @@ INDEX_HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doqurix - AI Document Intelligence</title>
+    <!-- Markdown / code-highlight / chart renderers. All CDN-hosted but the
+         page still works offline without them; addMessage() falls back to a
+         plain-text renderer if any library failed to load. -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -160,6 +254,27 @@ INDEX_HTML = """
         .upload-btn:active {
             transform: translateY(0) scale(0.98);
         }
+
+        .settings-btn {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-primary, #ececf1);
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 10px;
+        }
+        .settings-btn:hover {
+            background: rgba(255,255,255,0.12);
+            transform: translateY(-1px);
+        }
+        .settings-btn:active { transform: translateY(0); }
         
         /* Sidebar */
         .sidebar {
@@ -368,6 +483,119 @@ INDEX_HTML = """
         .message.user .message-content {
             background: var(--bg-chat-user);
             border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        /* -------- Markdown rendering inside assistant bubbles -------- */
+        .message-content h1,
+        .message-content h2,
+        .message-content h3,
+        .message-content h4 {
+            margin: 18px 0 10px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--text-primary);
+        }
+        .message-content h1 { font-size: 22px; }
+        .message-content h2 { font-size: 19px; }
+        .message-content h3 { font-size: 17px; }
+        .message-content h4 { font-size: 15px; color: var(--text-secondary); }
+        .message-content p { margin: 8px 0; }
+        .message-content ul,
+        .message-content ol { margin: 8px 0 8px 22px; padding: 0; }
+        .message-content li { margin: 4px 0; }
+        .message-content strong { color: var(--text-primary); font-weight: 600; }
+        .message-content em { color: var(--text-secondary); }
+        .message-content blockquote {
+            border-left: 3px solid var(--accent-primary);
+            margin: 10px 0;
+            padding: 4px 14px;
+            color: var(--text-secondary);
+            background: rgba(16,163,127,0.06);
+            border-radius: 0 8px 8px 0;
+        }
+        .message-content a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            border-bottom: 1px dotted rgba(16,163,127,0.4);
+        }
+        .message-content a:hover { border-bottom-style: solid; }
+        .message-content code {
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 13px;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        .message-content pre {
+            background: #0d0d0d;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px 16px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .message-content pre code {
+            background: transparent;
+            border: 0;
+            padding: 0;
+            font-size: inherit;
+        }
+        .message-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 14px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        .message-content thead { background: rgba(16,163,127,0.12); }
+        .message-content th,
+        .message-content td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .message-content th { font-weight: 600; color: var(--text-primary); }
+        .message-content tr:last-child td { border-bottom: 0; }
+        .message-content tr:hover { background: rgba(255,255,255,0.03); }
+        .message-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 16px 0;
+        }
+        .message-content details {
+            margin: 8px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.02);
+        }
+        .message-content summary {
+            cursor: pointer;
+            color: var(--accent-primary);
+            font-weight: 500;
+            user-select: none;
+            outline: none;
+        }
+        .message-content details[open] summary { margin-bottom: 8px; }
+        .message-content .chart-wrap {
+            background: #0d0d0d;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            margin: 12px 0;
+        }
+        .message-content .chart-wrap canvas { max-width: 100%; }
+        .message-content .chart-title {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 8px;
         }
         
         .loading-dots {
@@ -862,6 +1090,14 @@ INDEX_HTML = """
             </svg>
             Upload Documents
         </button>
+        <button class="settings-btn" type="button" title="Settings & License"
+                onclick="window.doqurixOpenSettings && window.doqurixOpenSettings()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Settings
+        </button>
     </div>
     
     <!-- Sidebar -->
@@ -1093,7 +1329,6 @@ INDEX_HTML = """
             const docCount = document.getElementById('docCount');
             
             docCount.textContent = documents.length;
-            
             if (documents.length === 0) {
                 docList.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; padding: 16px; text-align: center;">No documents uploaded</div>';
                 return;
@@ -1205,7 +1440,27 @@ INDEX_HTML = """
             if (welcome) welcome.remove();
             
             const avatar = role === 'user' ? '👤' : '🤖';
-            
+
+            // Render assistant text as GitHub-flavored Markdown.
+            // User messages and loading indicators are passed through
+            // unchanged so existing HTML snippets (e.g. spinner markup)
+            // keep working.
+            let rendered = content;
+            if (role === 'assistant' && !isLoading && window.marked && window.DOMPurify) {
+                try {
+                    marked.setOptions({
+                        gfm: true, breaks: true, headerIds: false, mangle: false
+                    });
+                    const html = marked.parse(String(content));
+                    rendered = DOMPurify.sanitize(html, {
+                        ADD_TAGS: ['details', 'summary'],
+                        ADD_ATTR: ['open']
+                    });
+                } catch (e) {
+                    console.error('markdown render failed', e);
+                }
+            }
+
             const messageDiv = document.createElement('div');
             messageDiv.id = messageId;
             messageDiv.className = `message ${role}`;
@@ -1213,15 +1468,72 @@ INDEX_HTML = """
                 <div class="message-wrapper">
                     <div class="avatar ${role}">${avatar}</div>
                     <div class="message-content">
-                        ${content}
+                        ${rendered}
                     </div>
                 </div>
             `;
             
             messagesDiv.appendChild(messageDiv);
+
+            // Post-process: syntax-highlight code blocks and render any
+            // ```chart``` JSON blocks as actual Chart.js charts.
+            if (role === 'assistant' && !isLoading) {
+                postProcessAssistantMessage(messageDiv);
+            }
+
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             
             return messageId;
+        }
+
+        // Replace ```chart``` fenced blocks (rendered by marked as
+        // <pre><code class="language-chart">...</code></pre>) with real
+        // Chart.js canvases, and highlight all remaining code blocks.
+        function postProcessAssistantMessage(root) {
+            // 1. Charts
+            root.querySelectorAll('pre > code.language-chart').forEach((codeEl) => {
+                let spec = null;
+                try { spec = JSON.parse(codeEl.textContent.trim()); }
+                catch (e) { return; }
+                if (!spec || !spec.type || !window.Chart) return;
+                const wrap = document.createElement('div');
+                wrap.className = 'chart-wrap';
+                if (spec.title) {
+                    const t = document.createElement('div');
+                    t.className = 'chart-title';
+                    t.textContent = spec.title;
+                    wrap.appendChild(t);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.height = 240;
+                wrap.appendChild(canvas);
+                codeEl.parentElement.replaceWith(wrap);
+                try {
+                    new Chart(canvas, {
+                        type: spec.type,
+                        data: { labels: spec.labels || [], datasets: spec.datasets || [] },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { labels: { color: '#ececf1' } },
+                                tooltip: { backgroundColor: '#1a1a1a' }
+                            },
+                            scales: (spec.type === 'pie' || spec.type === 'doughnut') ? {} : {
+                                x: { ticks: { color: '#b4b4b4' }, grid: { color: '#2a2a2a' } },
+                                y: { ticks: { color: '#b4b4b4' }, grid: { color: '#2a2a2a' } }
+                            }
+                        }
+                    });
+                } catch (e) {
+                    wrap.textContent = 'Chart render failed: ' + e.message;
+                }
+            });
+            // 2. Code highlighting
+            if (window.hljs) {
+                root.querySelectorAll('pre code').forEach((el) => {
+                    try { hljs.highlightElement(el); } catch (e) {}
+                });
+            }
         }
         
         // Toggle source expansion
@@ -1231,7 +1543,18 @@ INDEX_HTML = """
         }
         
         // Initialize
-        updateDocumentList();
+        // Hydrate the sidebar from the server so previously uploaded
+        // documents reappear after a refresh or a process restart.
+        (async () => {
+            try {
+                const r = await fetch('/documents');
+                const j = await r.json();
+                if (j && Array.isArray(j.documents)) {
+                    documents = j.documents;
+                }
+            } catch (e) { console.warn('document hydrate failed', e); }
+            updateDocumentList();
+        })();
     </script>
 </body>
 </html>
@@ -1240,9 +1563,306 @@ INDEX_HTML = """
 
 @app.route('/')
 def index():
+    """Serve main page (or loading page while models initialize)."""
+    if not STARTUP_STATE.get("ready"):
+        response.content_type = 'text/html; charset=utf-8'
+        return LOADING_HTML
+    return _INDEX_WITH_STOP_BUTTON
 
-    """Serve main page"""
-    return INDEX_HTML
+
+@app.route('/api/startup-progress')
+def startup_progress():
+    """Return current startup progress for the loading overlay."""
+    response.content_type = 'application/json'
+    return json.dumps(STARTUP_STATE)
+
+
+@app.route('/api/shutdown', method=['POST', 'GET'])
+def shutdown():
+    """Gracefully stop the desktop web app from the browser."""
+    response.content_type = 'application/json'
+
+    def _exit_soon():
+        time.sleep(0.4)
+        # Bottle's wsgiref server has no clean shutdown hook; force exit.
+        os._exit(0)
+
+    threading.Thread(target=_exit_soon, daemon=True).start()
+    return json.dumps({'success': True, 'message': 'Doqurix is shutting down...'})
+
+
+# --- License (Settings panel) -------------------------------------------------
+# A cached LicenseManager instance — imported lazily so importing this module
+# during tests does not trigger main.py side effects.
+_license_manager = None
+
+def _get_license_manager():
+    global _license_manager
+    if _license_manager is None:
+        from main import LicenseManager  # main.py guards run_web_app with __main__
+        _license_manager = LicenseManager()
+    return _license_manager
+
+
+def _license_payload():
+    """Build a JSON-serializable snapshot of the current license state."""
+    lm = _get_license_manager()
+    can_run, is_trial, days_remaining, message = lm.get_status()
+    is_licensed, lic_msg, lic_days = lm.check_license()
+    key_masked = None
+    activation_date = None
+    if is_licensed:
+        try:
+            with open(lm.license_file, 'r') as f:
+                data = json.load(f)
+            k = data.get('key', '')
+            # Mask all but the last 4 chars: DQRX-****-****-XXXX
+            if k:
+                key_masked = "DQRX-****-****-" + k.split('-')[-1]
+            activation_date = data.get('activation_date')
+        except Exception:
+            pass
+    return {
+        'can_run': can_run,
+        'is_trial': is_trial,
+        'is_licensed': is_licensed,
+        'days_remaining': days_remaining,
+        'message': message,
+        'key_masked': key_masked,
+        'activation_date': activation_date,
+        'machine_id': lm._get_machine_id(),
+        'trial_length_days': lm._TRIAL_DAYS,
+        'license_length_days': 365,
+    }
+
+
+@app.route('/api/license/status', method='GET')
+def license_status():
+    response.content_type = 'application/json'
+    try:
+        return json.dumps({'success': True, **_license_payload()})
+    except Exception as e:
+        return json.dumps({'success': False, 'error': str(e)})
+
+
+@app.route('/api/license/activate', method='POST')
+def license_activate():
+    response.content_type = 'application/json'
+    try:
+        data = request.json or {}
+        key = (data.get('key') or '').strip()
+        if not key:
+            return json.dumps({'success': False, 'error': 'No key provided'})
+        lm = _get_license_manager()
+        ok, message = lm.validate_license_key(key)
+        return json.dumps({'success': ok, 'message': message, 'status': _license_payload()})
+    except Exception as e:
+        return json.dumps({'success': False, 'error': str(e)})
+
+
+# Inject a floating "Stop App" button + small JS handler into the main UI
+# without having to surgically edit the huge INDEX_HTML constant.
+_STOP_BUTTON_SNIPPET = """
+<style>
+  #doqurix-stop-btn {
+    position: fixed; bottom: 18px; right: 18px; z-index: 9999;
+    background: linear-gradient(135deg,#ff6b35 0%,#e74c3c 100%);
+    color: #fff; border: none; padding: 10px 16px; border-radius: 999px;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; box-shadow: 0 6px 18px rgba(231,76,60,0.45);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  #doqurix-stop-btn:hover { transform: translateY(-1px);
+                            box-shadow: 0 10px 24px rgba(231,76,60,0.55); }
+  #doqurix-stop-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.85); color:#fff;
+    display: none; align-items: center; justify-content: center; z-index: 99999;
+    font-family: 'Inter', sans-serif; font-size: 18px;
+  }
+  #doqurix-settings-modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: none; align-items: center; justify-content: center; z-index: 99998;
+    font-family: 'Inter', sans-serif;
+  }
+  #doqurix-settings-modal .ds-card {
+    background: #1f2027; color: #ececf1; width: min(520px, 92vw);
+    border: 1px solid #3e3f4b; border-radius: 14px; padding: 24px 26px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  #doqurix-settings-modal h2 { margin: 0 0 4px; font-size: 20px; }
+  #doqurix-settings-modal .ds-sub { color: #9aa0aa; font-size: 13px; margin-bottom: 18px; }
+  #doqurix-settings-modal .ds-row { display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid #2c2d36; font-size: 14px; }
+  #doqurix-settings-modal .ds-row:last-of-type { border-bottom: none; }
+  #doqurix-settings-modal .ds-label { color: #9aa0aa; }
+  #doqurix-settings-modal .ds-value { color: #ececf1; font-weight: 500; text-align: right; }
+  #doqurix-settings-modal .ds-badge {
+    display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px;
+    font-weight: 700; letter-spacing: .3px;
+  }
+  #doqurix-settings-modal .ds-badge.licensed { background: #1f6f43; color: #d6f5e3; }
+  #doqurix-settings-modal .ds-badge.trial    { background: #4a5568; color: #e2e8f0; }
+  #doqurix-settings-modal .ds-badge.expired  { background: #7a1f2b; color: #fde0e4; }
+  #doqurix-settings-modal .ds-key-area { margin-top: 18px; }
+  #doqurix-settings-modal .ds-key-area label {
+    display: block; font-size: 13px; color: #c9ced8; margin-bottom: 6px; }
+  #doqurix-settings-modal .ds-key-area input {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #3e3f4b; background: #14151b; color: #ececf1;
+    font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 14px;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  #doqurix-settings-modal .ds-actions {
+    margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end;
+  }
+  #doqurix-settings-modal button {
+    padding: 9px 16px; border-radius: 8px; font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+  }
+  #doqurix-settings-modal .ds-btn-primary {
+    background: linear-gradient(135deg,#10a37f 0%,#0d8a6c 100%); color: #fff;
+  }
+  #doqurix-settings-modal .ds-btn-secondary {
+    background: #2a2b32; color: #ececf1; border: 1px solid #3e3f4b;
+  }
+  #doqurix-settings-msg { margin-top: 10px; font-size: 13px; min-height: 18px; }
+  #doqurix-settings-msg.ok    { color: #4ade80; }
+  #doqurix-settings-msg.err   { color: #f87171; }
+</style>
+<button id="doqurix-settings-btn" style="display:none;">⚙</button>
+<button id="doqurix-stop-btn" title="Stop the Doqurix app">⏻ Stop App</button>
+<div id="doqurix-stop-overlay">Doqurix has been stopped. You may close this tab.</div>
+<div id="doqurix-settings-modal" role="dialog" aria-modal="true">
+  <div class="ds-card">
+    <h2>Settings</h2>
+    <div class="ds-sub">License information & activation</div>
+    <div id="doqurix-license-info">
+      <div class="ds-row"><span class="ds-label">Status</span><span class="ds-value" id="ds-status">…</span></div>
+      <div class="ds-row"><span class="ds-label">Plan</span><span class="ds-value" id="ds-plan">…</span></div>
+      <div class="ds-row"><span class="ds-label">Days remaining</span><span class="ds-value" id="ds-days">…</span></div>
+      <div class="ds-row" id="ds-key-row" style="display:none;"><span class="ds-label">License key</span><span class="ds-value" id="ds-key">—</span></div>
+      <div class="ds-row" id="ds-activated-row" style="display:none;"><span class="ds-label">Activated on</span><span class="ds-value" id="ds-activated">—</span></div>
+      <div class="ds-row"><span class="ds-label">Machine ID</span><span class="ds-value" id="ds-machine" style="font-family:monospace;font-size:12px;">—</span></div>
+    </div>
+    <div class="ds-key-area">
+      <label for="ds-key-input">Enter a license key to extend access by 1 year</label>
+      <input id="ds-key-input" type="text" placeholder="DQRX-XXXX-XXXX-XXXX" maxlength="19" autocomplete="off" spellcheck="false" />
+      <div id="doqurix-settings-msg"></div>
+    </div>
+    <div class="ds-actions">
+      <button class="ds-btn-secondary" id="ds-close">Close</button>
+      <button class="ds-btn-primary" id="ds-activate">Activate</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const stopBtn = document.getElementById('doqurix-stop-btn');
+  const overlay = document.getElementById('doqurix-stop-overlay');
+  stopBtn.addEventListener('click', async () => {
+    if (!confirm('Stop the Doqurix app? You will need to relaunch it to continue.')) return;
+    try { await fetch('/api/shutdown', { method: 'POST' }); } catch(e) {}
+    overlay.style.display = 'flex';
+  });
+
+  const setBtn  = document.getElementById('doqurix-settings-btn');
+  const modal   = document.getElementById('doqurix-settings-modal');
+  const closeBtn= document.getElementById('ds-close');
+  const actBtn  = document.getElementById('ds-activate');
+  const keyIn   = document.getElementById('ds-key-input');
+  const msg     = document.getElementById('doqurix-settings-msg');
+
+  function badge(text, cls) {
+    return '<span class="ds-badge ' + cls + '">' + text + '</span>';
+  }
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleDateString(); } catch(e) { return iso; }
+  }
+  function render(s) {
+    let statusHtml, planHtml, cls;
+    if (s.is_licensed) { statusHtml = badge('LICENSED', 'licensed'); planHtml = 'Full (1 year)'; }
+    else if (s.is_trial) { statusHtml = badge('TRIAL', 'trial'); planHtml = 'Free trial (' + s.trial_length_days + ' days)'; }
+    else { statusHtml = badge('EXPIRED', 'expired'); planHtml = '—'; }
+    document.getElementById('ds-status').innerHTML = statusHtml;
+    document.getElementById('ds-plan').textContent = planHtml;
+    document.getElementById('ds-days').textContent = (s.days_remaining ?? 0) + ' days';
+    document.getElementById('ds-machine').textContent = s.machine_id || '—';
+    const keyRow = document.getElementById('ds-key-row');
+    const actRow = document.getElementById('ds-activated-row');
+    if (s.key_masked) {
+      keyRow.style.display = 'flex';
+      actRow.style.display = 'flex';
+      document.getElementById('ds-key').textContent = s.key_masked;
+      document.getElementById('ds-activated').textContent = fmtDate(s.activation_date);
+    } else {
+      keyRow.style.display = 'none';
+      actRow.style.display = 'none';
+    }
+  }
+  async function load() {
+    msg.className = ''; msg.textContent = 'Loading…';
+    try {
+      const r = await fetch('/api/license/status', { cache: 'no-store' });
+      const j = await r.json();
+      if (j && j.success !== false) { render(j); msg.textContent = ''; }
+      else { msg.className = 'err'; msg.textContent = j && (j.error || j.message) || 'Failed to load license info.'; }
+    } catch (e) {
+      msg.className = 'err'; msg.textContent = 'Failed to load license info: ' + e.message;
+    }
+  }
+  function openModal() {
+    msg.textContent = ''; msg.className = '';
+    keyIn.value = '';
+    modal.style.display = 'flex';
+    load();
+  }
+  window.doqurixOpenSettings = openModal;
+  setBtn.addEventListener('click', openModal);
+  closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+  // Auto-uppercase and auto-insert dashes for DQRX-XXXX-XXXX-XXXX
+  keyIn.addEventListener('input', (e) => {
+    let v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const parts = [];
+    if (v.length > 0) parts.push(v.slice(0, 4));
+    if (v.length > 4) parts[parts.length - 1] = v.slice(0, 4); // keep first
+    if (v.length > 4) parts.push(v.slice(4, 8));
+    if (v.length > 8) parts.push(v.slice(8, 12));
+    if (v.length > 12) parts.push(v.slice(12, 16));
+    e.target.value = parts.join('-');
+  });
+
+  actBtn.addEventListener('click', async () => {
+    const key = (keyIn.value || '').trim();
+    if (!key) { msg.className = 'err'; msg.textContent = 'Please enter a license key.'; return; }
+    actBtn.disabled = true; msg.className = ''; msg.textContent = 'Activating…';
+    try {
+      const r = await fetch('/api/license/activate', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ key })
+      });
+      const j = await r.json();
+      if (j.success) {
+        msg.className = 'ok'; msg.textContent = j.message || 'Activated.';
+        if (j.status) render(j.status);
+        keyIn.value = '';
+      } else {
+        msg.className = 'err'; msg.textContent = j.message || j.error || 'Activation failed.';
+      }
+    } catch (e) {
+      msg.className = 'err'; msg.textContent = 'Network error: ' + e.message;
+    } finally {
+      actBtn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+"""
+
+_INDEX_WITH_STOP_BUTTON = INDEX_HTML.replace("</body>", _STOP_BUTTON_SNIPPET, 1)
 
 
 @app.route('/upload', method='POST')
@@ -1273,21 +1893,39 @@ def upload():
         elif file_ext == '.docx':
             text = extract_text_from_docx_bytes(file_content)
         
-        # Chunk and add to vector store
+        # Chunk and add to vector store in batches (10x faster than
+        # encoding one chunk at a time). Each batch is sized so a single
+        # forward pass of MiniLM-L6 stays cheap on CPU.
         chunks = smart_chunk_text(text)
-        for i, chunk in enumerate(chunks):
-            embedding = embedder.encode(chunk).tolist()
+        if not chunks:
+            response.content_type = 'application/json'
+            return json.dumps({
+                'success': False,
+                'error': 'Could not extract usable text from the document.'
+            })
+
+        batch_size = 64
+        for batch_start in range(0, len(chunks), batch_size):
+            batch_chunks = chunks[batch_start:batch_start + batch_size]
+            embeddings = embedder.encode(
+                batch_chunks,
+                batch_size=32,
+                show_progress_bar=False,
+                convert_to_numpy=True,
+            ).tolist()
+            ids = [f"{filename}_{batch_start + i}" for i in range(len(batch_chunks))]
+            metadatas = [{
+                "source": filename,
+                "chunk_id": batch_start + i,
+                "page": (batch_start + i) // 3,
+            } for i in range(len(batch_chunks))]
             collection.add(
-                embeddings=[embedding],
-                documents=[chunk],
-                metadatas=[{
-                    "source": filename,
-                    "chunk_id": i,
-                    "page": i // 3
-                }],
-                ids=[f"{filename}_{i}"]
+                embeddings=embeddings,
+                documents=batch_chunks,
+                metadatas=metadatas,
+                ids=ids,
             )
-        
+
         rebuild_bm25_index()
         
         response.content_type = 'application/json'
@@ -1296,6 +1934,29 @@ def upload():
     except Exception as e:
         response.content_type = 'application/json'
         return json.dumps({'success': False, 'error': str(e)})
+
+
+@app.route('/documents', method='GET')
+def list_documents():
+    """Return the list of source filenames currently in the vector store.
+
+    Called by the frontend on page load so the sidebar (and the in-memory
+    ``documents`` JS array) survives a browser refresh — the underlying
+    chunks already persist on disk via ``PersistentClient``.
+    """
+    response.content_type = 'application/json'
+    try:
+        if collection is None:
+            return json.dumps({'success': True, 'documents': []})
+        all_docs = collection.get()
+        seen = []
+        for meta in all_docs.get('metadatas') or []:
+            src = (meta or {}).get('source')
+            if src and src not in seen:
+                seen.append(src)
+        return json.dumps({'success': True, 'documents': seen})
+    except Exception as e:
+        return json.dumps({'success': False, 'error': str(e), 'documents': []})
 
 
 @app.route('/delete', method='POST')
@@ -1481,8 +2142,16 @@ def extract_table_content(table):
     return '\\n'.join(table_data)
 
 
-def smart_chunk_text(text, chunk_size=600, overlap=200):
-    """Smart chunking with overlap - matches desktop implementation"""
+def smart_chunk_text(text, chunk_size=200, overlap=40):
+    """Smart, sentence-aware chunking.
+
+    Defaults are deliberately sized for the MiniLM-L6 embedder
+    (256-token input cap). 200 words ≈ 260 tokens once tokenizer overhead
+    is included, so a single sentence-boundary slack keeps every chunk
+    fully embedded. Larger chunks here silently get truncated by the
+    embedder and degrade retrieval quality, so do not raise these
+    defaults without also swapping in a bigger embedder.
+    """
     import re
     text = re.sub(r'\s+', ' ', text).strip()
     sentences = re.split(r'(?<=[.!?])\s+', text)
@@ -1707,11 +2376,33 @@ def generate_answer(question, contexts):
     }
     
     lang_instruction = lang_instructions.get(detected_lang, lang_instructions['english'])
-    
+
+    # The frontend renders the answer as Markdown (GitHub-flavored). Tell the
+    # model to actually USE markdown structure so the UI looks like ChatGPT
+    # / Claude rather than a wall of text.
+    markdown_instructions = (
+        "Format your answer in clean GitHub-flavored Markdown:\n"
+        "- Start with a one-line **bold summary** of the answer.\n"
+        "- Use `##` headings only when the answer has multiple distinct sections.\n"
+        "- Use bullet lists for enumerations, numbered lists for ordered steps.\n"
+        "- Use a Markdown **table** whenever the answer compares >=2 items "
+        "across >=2 attributes (e.g. options, rates, dates, prices).\n"
+        "- Use fenced ```code``` blocks for any code, commands, or exact "
+        "identifiers; use inline `code` for short literals.\n"
+        "- When relevant numeric data is present in the context, you MAY emit "
+        "a fenced ```chart``` block containing JSON of the form "
+        "`{\"type\":\"bar|line|pie|doughnut\",\"labels\":[...],"
+        "\"datasets\":[{\"label\":\"...\",\"data\":[...]}],"
+        "\"title\":\"...\"}` and the UI will render it as an interactive chart.\n"
+        "- Never invent numbers, dates, names, or sources that are not in the "
+        "context. If the context does not support the answer, say so."
+    )
+
     prompt = f"""<|im_start|>system
 You are a helpful AI assistant that answers questions based on provided documents.
 {lang_instruction}
-Be concise and accurate. Cite sources when possible.<|im_end|>
+{markdown_instructions}
+Be concise, accurate, and well-structured. Cite sources when possible.<|im_end|>
 <|im_start|>user
 Context:
 {context_text}
@@ -1733,20 +2424,24 @@ Answer:<|im_end|>
     )
     
     answer = output['choices'][0]['text'].strip()
-    
-    # Format answer with expandable sources
-    answer += "\n\n📚 Sources:\n"
-    for i, ctx in enumerate(contexts[:len(context_parts)], 1):
-        source = ctx['metadata']['source']
-        page = ctx['metadata']['page']
-        content = ctx['doc']
-        
-        # Create expandable source with content
-        answer += f"""\n<div class="source" onclick="toggleSource(this)">
-  [{i}] {source} (Page {page}) ▼
-  <div class="source-content">{content}</div>
-</div>"""
-    
+    # Strip any leftover <think>...</think> blocks from Qwen3 thinking mode.
+    answer = re.sub(r'<think>.*?</think>\s*', '', answer, flags=re.DOTALL).strip()
+
+    # Append sources as a Markdown details/summary block. Markdown allows
+    # raw HTML pass-through, so this still renders nicely after markdown
+    # parsing on the client and stays readable in plain-text mode too.
+    if contexts:
+        answer += "\n\n---\n\n**📚 Sources**\n"
+        for i, ctx in enumerate(contexts[:len(context_parts)], 1):
+            source = ctx['metadata'].get('source', 'Unknown')
+            page = ctx['metadata'].get('page', 0)
+            snippet = (ctx['doc'][:400] + "…") if len(ctx['doc']) > 400 else ctx['doc']
+            answer += (
+                f"\n<details><summary>[{i}] {source} (page {page})</summary>\n\n"
+                f"> {snippet.replace(chr(10), chr(10) + '> ')}\n\n"
+                f"</details>"
+            )
+
     return answer
 
 

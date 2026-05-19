@@ -1,0 +1,39 @@
+<!--
+  Stop App snippet.
+  Inject by string-replacing the LAST "</body>" of your main UI HTML constant:
+
+      _INDEX_WITH_STOP_BUTTON = INDEX_HTML.replace("</body>", SNIPPET, 1)
+
+  The snippet itself ends with "</body>" so the resulting document stays valid.
+-->
+<style>
+  #app-stop-btn {
+    position: fixed; bottom: 18px; right: 18px; z-index: 9999;
+    background: linear-gradient(135deg,#ff6b35 0%,#e74c3c 100%);
+    color:#fff; border:none; padding:10px 16px; border-radius:999px;
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+    cursor:pointer; box-shadow:0 6px 18px rgba(231,76,60,0.45);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  #app-stop-btn:hover { transform: translateY(-1px);
+                        box-shadow:0 10px 24px rgba(231,76,60,0.55); }
+  #app-stop-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.85); color:#fff;
+    display:none; align-items:center; justify-content:center; z-index:99999;
+    font-family:'Inter',sans-serif; font-size:18px;
+  }
+</style>
+<button id="app-stop-btn" title="Stop the app">⏻ Stop App</button>
+<div id="app-stop-overlay">The app has been stopped. You may close this tab.</div>
+<script>
+(function(){
+  const btn = document.getElementById('app-stop-btn');
+  const overlay = document.getElementById('app-stop-overlay');
+  btn.addEventListener('click', async () => {
+    if (!confirm('Stop the app? You will need to relaunch it to continue.')) return;
+    try { await fetch('/api/shutdown', { method: 'POST' }); } catch(e) {}
+    overlay.style.display = 'flex';
+  });
+})();
+</script>
+</body>
